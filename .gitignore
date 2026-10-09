@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# SAM
+backend/.aws-sam/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Never commit real bills or quotes: they contain names, addresses and phone numbers
+samples/
+*.pdf
+*.jpeg
+*.jpg
+*.png
+*.webp
+*.avif
+!frontend/public/*.png
+
+.DS_Store
+.env

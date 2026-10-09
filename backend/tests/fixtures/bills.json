@@ -1,0 +1,57 @@
+{
+  "_note": "Numbers read by hand from the four sample bills in bill_folder. No names, addresses or account numbers.",
+  "brpl_domestic_may25": {
+    "file": "bill1.webp",
+    "bill": {
+      "discom": "BSES Rajdhani Power Limited",
+      "category": "domestic",
+      "sanctioned_load_kw": 4.0,
+      "billing_period_days": 30,
+      "units_billed": 563,
+      "history": [
+        {"units": 400, "days": 30}, {"units": 292, "days": 30}, {"units": 359, "days": 31},
+        {"units": 370, "days": 27}, {"units": 329, "days": 30}, {"units": 223, "days": 30}
+      ],
+      "current_charges_inr": 3654.35
+    },
+    "expect": "solar pays off"
+  },
+  "brpl_domestic_jan21_low": {
+    "file": "bses-rajdhani-...avif",
+    "bill": {
+      "discom": "BSES Rajdhani Power Limited",
+      "category": "domestic",
+      "sanctioned_load_kw": 1.0,
+      "billing_period_days": 32,
+      "units_billed": 163,
+      "history": [],
+      "amount_payable_inr": 0
+    },
+    "expect": "not worth it: bill already zero under the Delhi subsidy"
+  },
+  "bypl_non_domestic_feb24": {
+    "file": "bill.jpeg",
+    "bill": {
+      "discom": "BSES Yamuna Power Ltd.",
+      "category": "non_domestic",
+      "sanctioned_load_kw": 7.0,
+      "billing_period_days": 31,
+      "units_billed": 584,
+      "history": [],
+      "current_charges_inr": 10317.56
+    },
+    "expect": "no PM Surya Ghar subsidy (commercial), but high tariff"
+  },
+  "brpl_non_domestic_quarterly_jun20": {
+    "file": "Scribd.pdf",
+    "bill": {
+      "discom": "BSES Rajdhani Power Limited",
+      "category": "non_domestic",
+      "sanctioned_load_kw": 1.0,
+      "billing_period_days": 91,
+      "units_billed": 1220,
+      "history": []
+    },
+    "expect": "quarterly bill normalised to ~402 units/month; limited by 1 kVA load"
+  }
+}

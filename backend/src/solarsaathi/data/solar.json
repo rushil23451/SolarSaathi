@@ -1,0 +1,43 @@
+{
+  "performance_ratio": 0.77,
+  "coverage_target": 0.9,
+  "min_system_kw": 1.0,
+  "size_step_kw": 0.5,
+  "degradation_per_year": 0.005,
+  "lifetime_years": 25,
+  "grid_emission_kg_per_kwh": 0.71,
+  "grid_emission_source": "CEA CO2 Baseline Database (approximate, verify latest version)",
+  "fallback_ghi_kwh_m2_day": 5.0,
+  "roof_limits_kw": {"small": 1.5, "medium": 3.0, "large": 10.0, "unknown": null},
+  "central_subsidy": {
+    "name": "PM Surya Ghar: Muft Bijli Yojana",
+    "categories": ["domestic"],
+    "per_kw_first_2": 30000,
+    "per_kw_third": 18000,
+    "cap_inr": 78000,
+    "source": "pmsuryaghar.gov.in (verify current amounts)"
+  },
+  "state_incentives": {
+    "delhi_derc": {
+      "enabled": false,
+      "capital_per_kw": 2000,
+      "capital_cap_inr": 10000,
+      "gbi_per_kwh": 3.0,
+      "gbi_years": 5,
+      "note": "Delhi Solar Policy 2024 figures from memory. Turn on only after checking the official policy."
+    }
+  },
+  "cost_per_kw_inr": [
+    {"up_to_kw": 3, "low": 55000, "high": 65000},
+    {"up_to_kw": 10, "low": 50000, "high": 60000},
+    {"up_to_kw": null, "low": 45000, "high": 55000}
+  ],
+  "cost_source": "Approximate market range for DCR on-grid systems incl. GST. Replace with government benchmark + real local quotes.",
+  "gst_effective_pct": 8.9,
+  "verdict": {
+    "min_monthly_units": 100,
+    "min_monthly_bill_inr": 300,
+    "good_payback_years": 7,
+    "ok_payback_years": 10
+  }
+}

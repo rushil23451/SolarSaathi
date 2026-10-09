@@ -1,0 +1,15 @@
+{
+  "price": {"amber_over_pct": 0, "red_over_pct": 15, "suspicious_below_pct": 25},
+  "size": {"green_within_kw": 0.5, "amber_within_kw": 1.0},
+  "inverter": {"ratio_min": 0.8, "ratio_max": 1.2},
+  "warranties": {"panel_performance_years": 25, "inverter_years": 5, "maintenance_years": 5},
+  "payment": {"green_max_advance_pct": 20, "amber_max_advance_pct": 50},
+  "required_items": ["mounting_structure", "dc_ac_cabling", "earthing", "lightning_arrester", "net_meter_process", "installation"],
+  "almm_list_complete": false,
+  "almm_makers": [
+    "Waaree", "Adani", "Mundra Solar", "Vikram Solar", "Tata Power Solar", "Goldi", "Premier Energies",
+    "Renewsys", "Saatvik", "Rayzon", "Emmvee", "Gautam Solar", "Navitas", "Pahal", "Jakson", "Insolation",
+    "Solex", "Websol", "Reliance", "Avaada", "Grew"
+  ],
+  "almm_source": "Starter list only. Replace with MNRE ALMM List-I (mnre.gov.in) before the demo, then set almm_list_complete to true."
+}

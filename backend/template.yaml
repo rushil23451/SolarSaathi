@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: SolarSaathi - rooftop solar bill and quote checker (Track 03, Waste and Energy)
+
+Parameters:
+  ModelId:
+    Type: String
+    Default: anthropic.claude-opus-5-5
+    Description: Claude model on Amazon Bedrock (Messages API endpoint, bedrock-mantle)
+  LlmEffort:
+    Type: String
+    Default: low
+    AllowedValues: [low, medium, high, ""]
+    Description: How hard the model thinks when reading a document. low is fast and enough for copying fields.
+  AllowedOrigin:
+    Type: String
+    Default: "*"
+    Description: Frontend origin allowed by CORS, e.g. https://main.xxxx.amplifyapp.com. Use * only while developing.
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: Email for the monthly $10 budget alert and error alarms. Leave empty to skip.
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures: [arm64]
+    CodeUri: src/
+    Environment:
+      Variables:
+        MODEL_ID: !Ref ModelId
+        LLM_EFFORT: !Ref LlmEffort
+        JOBS_TABLE: !Ref JobsTable
+        ANALYSES_TABLE: !Ref AnalysesTable
+        IRRADIANCE_TABLE: !Ref IrradianceTable
+        UPLOAD_BUCKET: !Ref UploadBucket
+
+Resources:
+  # ---------- Storage ----------
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteUploadsAfterOneDay # bills carry names and addresses
+            Status: Enabled
+            Prefix: uploads/
+            ExpirationInDays: 1
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [POST]
+            AllowedOrigins: [!Ref AllowedOrigin]
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+
+  JobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{ AttributeName: jobId, AttributeType: S }]
+      KeySchema: [{ AttributeName: jobId, KeyType: HASH }]
+      TimeToLiveSpecification: { AttributeName: expiresAt, Enabled: true }
+
+  AnalysesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{ AttributeName: analysisId, AttributeType: S }]
+      KeySchema: [{ AttributeName: analysisId, KeyType: HASH }]
+      TimeToLiveSpecification: { AttributeName: expiresAt, Enabled: true }
+
+  IrradianceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{ AttributeName: cell, AttributeType: S }]
+      KeySchema: [{ AttributeName: cell, KeyType: HASH }]
+
+  # ---------- API ----------
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: [!Ref AllowedOrigin]
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [content-type]
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20 # protects the Bedrock bill from abuse; raise when you scale
+        ThrottlingRateLimit: 10
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.api.handler
+      MemorySize: 512
+      Timeout: 29
+      Environment:
+        Variables:
+          WORKER_FUNCTION: !Ref WorkerFunction
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref JobsTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref AnalysesTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref IrradianceTable }
+        - S3WritePolicy: { BucketName: !Ref UploadBucket }
+        - LambdaInvokePolicy: { FunctionName: !Ref WorkerFunction }
+        - Statement:
+            - Effect: Allow
+              Action: polly:SynthesizeSpeech
+              Resource: "*"
+      Events:
+        Uploads: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /uploads } }
+        BillExtract: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /bill/extract } }
+        BillAnalyse: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /bill/analyse } }
+        QuoteCheck: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /quote/check } }
+        GetJob: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: "/jobs/{jobId}" } }
+        GetResult: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: "/results/{analysisId}" } }
+        Speech: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /speech } }
+
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.worker.handler
+      MemorySize: 1024
+      Timeout: 180
+      # No ReservedConcurrentExecutions: new accounts often have a total limit of 10, and reserving
+      # any of it fails the deploy. API throttling above already caps how fast jobs can start.
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0 # a failed read is reported to the user, not silently re-billed
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref JobsTable }
+        - S3ReadPolicy: { BucketName: !Ref UploadBucket }
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock-mantle:CreateInference # Claude in Amazon Bedrock (Messages API endpoint)
+              Resource: "*"
+
+  ApiLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ApiFunction}
+      RetentionInDays: 14
+
+  WorkerLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${WorkerFunction}
+      RetentionInDays: 14
+
+  # ---------- Alerts (only if AlertEmail is set) ----------
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlertEmail
+    Properties:
+      Subscription: [{ Protocol: email, Endpoint: !Ref AlertEmail }]
+
+  WorkerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlertEmail
+    Properties:
+      AlarmDescription: SolarSaathi worker is failing
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref WorkerFunction }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Condition: HasAlertEmail
+    Properties:
+      Budget:
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: 10, Unit: USD }
+      NotificationsWithSubscribers:
+        - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 80 }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+
+Outputs:
+  ApiUrl:
+    Description: Put this in the frontend as VITE_API_URL
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  UploadBucketName:
+    Value: !Ref UploadBucket

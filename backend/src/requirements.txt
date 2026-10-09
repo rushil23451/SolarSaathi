@@ -1,0 +1,3 @@
+anthropic[bedrock]>=1.13,<2
+strands-agents>=1.59,<2
+boto3>=1.40

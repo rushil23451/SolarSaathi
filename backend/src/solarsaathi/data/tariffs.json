@@ -1,0 +1,42 @@
+{
+  "delhi_derc": {
+    "name": "Delhi (DERC)",
+    "source": "Rates read from BSES bills (May 2025 domestic, Feb 2024 non-domestic). Verify against the current DERC tariff order before the demo.",
+    "discom_aliases": ["bses rajdhani", "brpl", "bses yamuna", "bypl", "tata power-ddl", "tata power delhi", "tpddl", "ndmc"],
+    "categories": {
+      "domestic": {
+        "energy_slabs": [
+          {"up_to": 200, "rate": 3.0},
+          {"up_to": 400, "rate": 4.5},
+          {"up_to": 800, "rate": 6.5},
+          {"up_to": 1200, "rate": 7.0},
+          {"up_to": null, "rate": 8.0}
+        ],
+        "fixed_charge_slabs": [
+          {"load_up_to_kw": 2, "per_kw": 20},
+          {"load_up_to_kw": 5, "per_kw": 50},
+          {"load_up_to_kw": 15, "per_kw": 100},
+          {"load_up_to_kw": 25, "per_kw": 200},
+          {"load_up_to_kw": null, "per_kw": 250}
+        ],
+        "ppac_pct": 10.0
+      },
+      "non_domestic": {
+        "energy_slabs": [{"up_to": null, "rate": 8.5}],
+        "fixed_charge_slabs": [{"load_up_to_kw": null, "per_kw": 250}],
+        "ppac_pct": 33.0
+      }
+    },
+    "surcharge_pct": 8.0,
+    "pension_surcharge_pct": 7.0,
+    "electricity_tax_pct": 5.0,
+    "state_subsidy": {
+      "categories": ["domestic"],
+      "free_up_to_units": 200,
+      "partial_up_to_units": 400,
+      "partial_share": 0.5,
+      "partial_cap_inr": 800,
+      "note": "Delhi government subsidy: bill waived up to 200 units/month, 50% (max Rs 800) for 201-400 units. Verify it still applies."
+    }
+  }
+}
