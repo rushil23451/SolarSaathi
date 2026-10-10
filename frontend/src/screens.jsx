@@ -145,8 +145,17 @@ function Stat({ label, value }) {
 }
 
 async function speak(lang, text) {
-  const { audio, contentType } = await post("/speech", { text, lang });
-  new Audio(`data:${contentType};base64,${audio}`).play();
+  try {
+    const { audio, contentType } = await post("/speech", { text, lang });
+    await new Audio(`data:${contentType};base64,${audio}`).play();
+  } catch {
+    // Amazon Polly unavailable (e.g. running locally): use the phone's own voice instead.
+    if (!window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang === "hi" ? "hi-IN" : "en-IN";
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }
 }
 
 export function Result({ lang, analysisId, result: r, onQuote, onRestart }) {

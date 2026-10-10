@@ -50,51 +50,34 @@ after about 30 seconds, and reading a photo with an AI model can take longer.
 | `backend/src/solarsaathi/llm.py`, `prompts.py`, `extract.py` | Reading documents on Bedrock (Nova via Converse, or Claude) + sanity checks against meter readings |
 | `backend/src/solarsaathi/data/*.json` | Tariffs, subsidy rules, cost benchmarks, approved panel makers (**verify these**) |
 | `backend/src/handlers/` | Lambda entry points: `api.py`, `worker.py` |
-| `backend/tests/` | 29 unit tests, including tariff calibration against real bills |
+| `backend/tests/` | 31 unit tests, including tariff calibration against real bills |
 | `backend/scripts/demo_offline.py` | Run the engine on the four sample bills, no AWS needed |
+| `backend/scripts/local_api.py` | The real backend on your laptop (real Bedrock, in-memory storage) |
 | `backend/scripts/mock_api.py` | Local fake API so the frontend works without AWS |
 | `backend/scripts/try_bill.py` | Read a real bill photo with Bedrock from your laptop |
 | `backend/scripts/eval_bills.py` | Score a model on the sample bills (which fields it reads correctly) |
 | `frontend/` | React + Vite phone web app (Hindi/English) |
 | `amplify.yml` | Build settings for Amplify Hosting |
-| `docs/AWS_SETUP.md` | **Step-by-step AWS setup and deployment** |
+| `run.sh` | **One helper for everything:** setup, check, local, mock, deploy, cloud |
+| `docs/RUNNING.md` | **Start here: run locally, demo script, deploy step by step** |
+| `docs/AWS_SETUP.md` | AWS background: plans, model access, costs |
 | `docs/SCALING.md` | What to change to serve thousands of users |
 
 ## Quick start
 
-### 1. Run the maths on the sample bills (no AWS, 1 minute)
+Full step-by-step guide, including the demo script: **[docs/RUNNING.md](docs/RUNNING.md)**.
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r backend/src/requirements.txt pytest
-cd backend && python -m pytest -q && python scripts/demo_offline.py --live
+./run.sh setup     # install everything, connect your AWS profiles (once)
+./run.sh check     # what works right now?
+./run.sh local     # the real app on your laptop: real AI on Bedrock, no deploy needed
+./run.sh mock      # the app with sample answers, no AWS at all
+./run.sh test      # unit tests + the engine on the sample bills
+./run.sh deploy you@example.com   # deploy the backend to AWS with SAM
+./run.sh cloud     # laptop frontend against the deployed backend
 ```
 
-### 2. Run the app locally with the mock API (no AWS)
-
-```bash
-python backend/scripts/mock_api.py
-```
-
-In a second terminal:
-
-```bash
-cd frontend && npm install && echo "VITE_API_URL=http://localhost:8787" > .env.local && npm run dev
-```
-
-Open http://localhost:5173. Any uploaded photo "reads" as the sample BSES Rajdhani bill; the
-calculation and quote rules are real.
-
-### 3. Deploy to AWS
-
-Follow **[docs/AWS_SETUP.md](docs/AWS_SETUP.md)**. Short version, once the AWS CLI, SAM CLI and
-Bedrock model access are set up:
-
-```bash
-cd backend && sam build && sam deploy
-```
-
-Then put the printed `ApiUrl` into Amplify Hosting as `VITE_API_URL`.
+Open http://localhost:5173 after `local`, `mock` or `cloud`.
 
 ## What the sample bills show
 

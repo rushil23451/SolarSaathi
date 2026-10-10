@@ -1,5 +1,7 @@
 # AWS setup and deployment, step by step
 
+> **Just want to run it?** See [RUNNING.md](RUNNING.md): `./run.sh setup`, `./run.sh local`, `./run.sh deploy`.
+
 This takes about 60–90 minutes the first time. One person (the team leader) does steps 1–4;
 everyone else can work against the mock API until the backend is live.
 
