@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { checkText, fallbackQuestions, inr, t } from "./i18n.js";
 import { post } from "./api.js";
 
@@ -144,22 +144,54 @@ function Stat({ label, value }) {
   return <div className="stat"><div className="stat-value">{value}</div><div className="stat-label">{label}</div></div>;
 }
 
-async function speak(lang, text) {
-  try {
-    const { audio, contentType } = await post("/speech", { text, lang });
-    await new Audio(`data:${contentType};base64,${audio}`).play();
-  } catch {
-    // Amazon Polly unavailable (e.g. running locally): use the phone's own voice instead.
-    if (!window.speechSynthesis) return;
+// Read the result aloud with Amazon Polly; tap again to stop. Falls back to the device's own
+// voice when Polly isn't available (e.g. running locally).
+function useSpeech() {
+  const [state, setState] = useState("idle"); // idle | loading | playing
+  const audio = useRef(null);
+  const token = useRef(0);
+
+  const stop = () => {
+    token.current += 1;
+    audio.current?.pause();
+    audio.current = null;
+    window.speechSynthesis?.cancel();
+    setState("idle");
+  };
+
+  const fallback = (lang, text) => {
+    if (!window.speechSynthesis) return setState("idle");
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang === "hi" ? "hi-IN" : "en-IN";
+    u.onend = u.onerror = () => setState("idle");
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
-  }
+    setState("playing");
+  };
+
+  const play = async (lang, text) => {
+    const mine = ++token.current;
+    setState("loading");
+    try {
+      const { audio: data, contentType } = await post("/speech", { text, lang });
+      if (mine !== token.current) return; // stopped while loading
+      const a = new Audio(`data:${contentType};base64,${data}`);
+      a.onended = () => { if (audio.current === a) stop(); };
+      audio.current = a;
+      await a.play();
+      setState("playing");
+    } catch {
+      if (mine === token.current) fallback(lang, text);
+    }
+  };
+
+  useEffect(() => stop, []); // stop talking when leaving the screen
+  return { state, toggle: (lang, text) => (state === "idle" ? play(lang, text) : stop()) };
 }
 
 export function Result({ lang, analysisId, result: r, onQuote, onRestart }) {
   const [showSteps, setShowSteps] = useState(false);
+  const speech = useSpeech();
   const verdictClass = { yes: "good", maybe: "warn", not_worth: "bad" }[r.verdict] || "warn";
   const shareUrl = `${location.origin}${location.pathname}?r=${analysisId}`;
 
@@ -196,7 +228,9 @@ export function Result({ lang, analysisId, result: r, onQuote, onRestart }) {
       {(r.flags || []).map((f) => <p key={f} className="note">ⓘ {t(lang, "flag_" + f)}</p>)}
 
       <div className="row">
-        <button className="secondary" onClick={() => speak(lang, t(lang, "speech")(r))}>▶ {t(lang, "listen")}</button>
+        <button className="secondary" aria-pressed={speech.state !== "idle"} onClick={() => speech.toggle(lang, t(lang, "speech")(r))}>
+          {speech.state === "idle" ? `▶ ${t(lang, "listen")}` : `■ ${t(lang, "stop")}`}
+        </button>
         <button className="secondary" onClick={share}>↗ {t(lang, "share")}</button>
       </div>
 

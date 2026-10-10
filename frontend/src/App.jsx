@@ -6,7 +6,7 @@ import { Busy, Confirm, Home, QuoteReport, Result, Snap, Where } from "./screens
 
 export default function App() {
   const [lang, setLang] = useState(() => {
-    try { return localStorage.getItem("lang") || "hi"; } catch { return "hi"; }
+    try { return localStorage.getItem("lang") || "en"; } catch { return "en"; }
   });
   const [step, setStep] = useState("home");
   const [busy, setBusy] = useState("");
@@ -79,8 +79,8 @@ export default function App() {
       <header>
         <button className="brand" onClick={restart}>☀️ SolarSaathi</button>
         <div className="lang" role="group" aria-label="Language">
-          <button aria-pressed={lang === "hi"} onClick={() => setLang("hi")}>हिंदी</button>
           <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>English</button>
+          <button aria-pressed={lang === "hi"} onClick={() => setLang("hi")}>हिंदी</button>
         </div>
       </header>
       {!apiConfigured && <p className="error">{t(lang, "notConfigured")}</p>}
