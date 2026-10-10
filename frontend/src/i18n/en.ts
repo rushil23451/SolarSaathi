@@ -271,6 +271,9 @@ export const en = {
         `In ${n} of 12 months, your grid use stays under Delhi’s free ${limit} units, so the bill is ₹0 in those months. In winter, with less sun, you pay for the extra units.`,
       whyNormal: (grid: number) => `You pay only for the ${num(grid)} units a month that solar doesn’t cover, at the cheaper lower slabs. The fixed charge stays.`,
       alreadyZero: (limit: number | null) => `Your bill is already ₹0${limit ? ` because you use less than Delhi’s free ${limit} units` : ""}, so solar has nothing left to save.`,
+      fromRoof: "From your roof",
+      fromGrid: "From the grid",
+      savedLabel: "You save a month",
       monthsTitle: "Month by month",
       monthsNote: (limit: number | null) =>
         `Each bar is one month of your use. Orange comes from your roof, blue from the grid; winter has less sun.${limit ? ` While the blue part stays under the dashed line (Delhi’s free ${limit} units), that month’s bill is ₹0.` : ""}`,

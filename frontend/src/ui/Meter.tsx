@@ -71,8 +71,8 @@ export function Meter({ value, digits = 5, unit, caption, tone = "ink", classNam
         </svg>
       </div>
       {(unit || caption) && (
-        <figcaption className="mt-3 flex items-baseline justify-between gap-4 type-small" aria-hidden="true">
-          <span className="font-semibold tracking-wide text-paper/90">{unit}</span>
+        <figcaption className="mt-3 flex flex-col type-small" aria-hidden="true">
+          <span className="font-semibold text-paper/90">{unit}</span>
           <span className="text-paper/60">{caption}</span>
         </figcaption>
       )}
