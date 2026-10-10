@@ -93,7 +93,7 @@ fraction of a paisa. Example while the new account is still being verified:
 
 ```
 Profile 'college' (local)
-  ✓ signed in to account 075774507060, region ap-south-1
+  ✓ signed in to account 111122223333, region ap-south-1
   ✓ Bedrock (global.amazon.nova-2-lite-v1:0) answers
 
 Profile 'deploy' (deploy)
@@ -119,7 +119,7 @@ Run `./run.sh check` again every few hours. When the `deploy` lines turn green, 
 You'll see:
 
 ```
-AWS profile : college (account 075774507060)
+AWS profile : college (account 111122223333)
 Model       : global.amazon.nova-2-lite-v1:0 in ap-south-1
 API         : http://localhost:8787
 Open the app:  http://localhost:5173
