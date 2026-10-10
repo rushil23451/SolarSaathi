@@ -2,7 +2,7 @@
   "delhi_derc": {
     "name": "Delhi (DERC)",
     "source": "Rates read from BSES bills (May 2025 domestic, Feb 2024 non-domestic). Verify against the current DERC tariff order before the demo.",
-    "discom_aliases": ["bses rajdhani", "brpl", "bses yamuna", "bypl", "tata power-ddl", "tata power delhi", "tpddl", "ndmc"],
+    "discom_aliases": ["bses", "brpl", "bypl", "rajdhani", "yamuna", "tata power-ddl", "tata power delhi", "tpddl", "ndmc"],
     "categories": {
       "domestic": {
         "energy_slabs": [

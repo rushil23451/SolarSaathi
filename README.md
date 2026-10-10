@@ -10,7 +10,8 @@ payment terms, then gives the family the exact questions to ask the vendor.
 
 Track 03, Waste and Energy (rooftop solar). Built on AWS with two AWS open-source tools
 (**Strands Agents SDK**, **AWS SAM CLI**) and deployed on AWS (Lambda, API Gateway, S3,
-DynamoDB, Bedrock, Polly, Amplify).
+DynamoDB, Bedrock with **Amazon Nova**, Polly, Amplify). Claude on Bedrock is a one-setting
+switch for Paid-plan accounts.
 
 > **Design rule:** the AI only *reads* documents. Every number comes from plain, unit-tested
 > Python in [`backend/src/solarsaathi/calc.py`](backend/src/solarsaathi/calc.py).
@@ -28,7 +29,7 @@ Phone (React PWA on Amplify)
   ▼
 API Gateway (HTTP API) ─► ApiFunction (Lambda, fast routes)
                           └─► WorkerFunction (Lambda, async)
-                                ├─ Claude on Amazon Bedrock: reads the bill / quote into JSON
+                                ├─ Amazon Nova on Bedrock (or Claude): reads the bill / quote into JSON
                                 └─ Strands agent: runs the 9 quote rules, writes vendor questions
 DynamoDB: Jobs · Analyses (30-day TTL) · IrradianceCache      Polly: Hindi/English voice
 ```
@@ -46,13 +47,14 @@ after about 30 seconds, and reading a photo with an AI model can take longer.
 | `backend/src/solarsaathi/tariff.py` | Slab tariff → monthly bill (checked against real BSES bills) |
 | `backend/src/solarsaathi/quote_rules.py` | The nine quote checks |
 | `backend/src/solarsaathi/quote_agent.py` | Strands agent that runs the quote check (with a fallback pipeline) |
-| `backend/src/solarsaathi/llm.py`, `prompts.py`, `extract.py` | Reading documents with Claude on Bedrock + validation |
+| `backend/src/solarsaathi/llm.py`, `prompts.py`, `extract.py` | Reading documents on Bedrock (Nova via Converse, or Claude) + sanity checks against meter readings |
 | `backend/src/solarsaathi/data/*.json` | Tariffs, subsidy rules, cost benchmarks, approved panel makers (**verify these**) |
 | `backend/src/handlers/` | Lambda entry points: `api.py`, `worker.py` |
-| `backend/tests/` | 26 unit tests, including tariff calibration against real bills |
+| `backend/tests/` | 29 unit tests, including tariff calibration against real bills |
 | `backend/scripts/demo_offline.py` | Run the engine on the four sample bills, no AWS needed |
 | `backend/scripts/mock_api.py` | Local fake API so the frontend works without AWS |
 | `backend/scripts/try_bill.py` | Read a real bill photo with Bedrock from your laptop |
+| `backend/scripts/eval_bills.py` | Score a model on the sample bills (which fields it reads correctly) |
 | `frontend/` | React + Vite phone web app (Hindi/English) |
 | `amplify.yml` | Build settings for Amplify Hosting |
 | `docs/AWS_SETUP.md` | **Step-by-step AWS setup and deployment** |

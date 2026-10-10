@@ -8,6 +8,9 @@ const CITIES = [
   ["Pune", 18.52, 73.86], ["Ahmedabad", 23.02, 72.57], ["Jaipur", 26.91, 75.79], ["Lucknow", 26.85, 80.95],
 ];
 
+// Warnings from the backend's sanity checks that mean "look at the units again".
+const CHECK_UNITS = ["units_mismatch", "units_from_readings", "low_confidence", "units_missing"];
+
 export function Home({ lang, onBill, onQuote }) {
   return (
     <div className="stack">
@@ -72,6 +75,8 @@ export function Confirm({ lang, bill, onBack, onNext }) {
     <form className="stack" onSubmit={submit}>
       <h2>{t(lang, "confirmTitle")}</h2>
       <p className="muted">{t(lang, "confirmTip")}</p>
+      {CHECK_UNITS.some((w) => bill.warnings?.includes(w)) && <p className="warning">⚠ {t(lang, "checkUnits")}</p>}
+      {bill.warnings?.includes("history_row_dropped") && <p className="warning">⚠ {t(lang, "checkHistory")}</p>}
       <label>{t(lang, "discom")}<input value={f.discom} onChange={set("discom")} required /></label>
       <label>{t(lang, "category")}
         <select value={f.category} onChange={set("category")}>

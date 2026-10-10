@@ -5,13 +5,15 @@ Description: SolarSaathi - rooftop solar bill and quote checker (Track 03, Waste
 Parameters:
   ModelId:
     Type: String
-    Default: anthropic.claude-opus-5-5
-    Description: Claude model on Amazon Bedrock (Messages API endpoint, bedrock-mantle)
+    Default: global.amazon.nova-2-lite-v1:0
+    Description: >-
+      Bedrock model that reads bills and quotes. Amazon Nova IDs (works on Free plan accounts) use the
+      Converse API; anthropic.* IDs use Claude in Amazon Bedrock and need a Paid plan account.
   LlmEffort:
     Type: String
     Default: low
     AllowedValues: [low, medium, high, ""]
-    Description: How hard the model thinks when reading a document. low is fast and enough for copying fields.
+    Description: Claude only. How hard the model thinks when reading a document; low is enough for copying fields.
   AllowedOrigin:
     Type: String
     Default: "*"
@@ -143,6 +145,8 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - bedrock:InvokeModel # Amazon Nova through the Converse API
+                - bedrock:InvokeModelWithResponseStream # Strands agent streams with ConverseStream
                 - bedrock-mantle:CreateInference # Claude in Amazon Bedrock (Messages API endpoint)
               Resource: "*"
 

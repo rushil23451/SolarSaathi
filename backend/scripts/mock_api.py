@@ -8,6 +8,7 @@ uploaded bill "reads" as the BSES Rajdhani May-25 sample, and every quote as a s
 """
 
 import json
+import os
 import sys
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,7 +21,8 @@ from solarsaathi import calc, quote_rules  # noqa: E402
 
 PORT = 8787
 SAMPLE_BILL = {**json.loads((ROOT / "tests/fixtures/bills.json").read_text())["brpl_domestic_may25"]["bill"],
-               "warnings": []}
+               # e.g. MOCK_WARNINGS=units_mismatch to preview the "check the units" banner
+               "warnings": [w for w in os.environ.get("MOCK_WARNINGS", "").split(",") if w]}
 SAMPLE_QUOTE = {
     "vendor_name": "Sample Solar Pvt Ltd", "system_kw": 3, "price_total_inr": 225000, "gst_included": True,
     "panel_maker": "Waaree", "panel_model": None, "dcr_stated": True,

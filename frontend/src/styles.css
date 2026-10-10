@@ -80,6 +80,7 @@ label.choice input { width: auto; }
 
 .error { background: var(--bad-bg); color: var(--bad); padding: 10px 12px; border-radius: 10px; }
 .note { margin: 0; font-size: 15px; color: var(--muted); }
+.warning { margin: 0; background: var(--warn-bg); color: var(--warn); padding: 10px 12px; border-radius: 10px; font-size: 15px; }
 
 .banner { border-radius: 14px; padding: 16px; }
 .banner p { margin: 6px 0 0; }

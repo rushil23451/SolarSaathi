@@ -4,6 +4,8 @@ The model can misread a photo. Everything here is a sanity check in plain code, 
 field still goes to the user's confirmation screen before any calculation runs.
 """
 
+from datetime import date
+
 from . import llm, prompts
 
 CATEGORIES = {"domestic", "non_domestic", "other"}
@@ -20,6 +22,23 @@ def _num(value, lo: float = 0, hi: float = 1e9) -> float | None:
     except (TypeError, ValueError):
         return None
     return n if lo <= n <= hi else None
+
+
+def _units_from_readings(meter: dict) -> float | None:
+    cur, prev = _num(meter.get("current_reading")), _num(meter.get("previous_reading"))
+    factor = _num(meter.get("multiplication_factor"), 0.001, 10000) or 1.0
+    if cur is None or prev is None or cur <= prev:
+        return None
+    used = (cur - prev) * factor
+    return used if used <= 100000 else None
+
+
+def _days_between(start, end) -> int | None:
+    try:
+        d = (date.fromisoformat(str(end)) - date.fromisoformat(str(start))).days
+    except ValueError:
+        return None
+    return d if 1 <= d <= 100 else None  # bills cover 1-3 months; more means a misread date
 
 
 def normalize_bill(raw: dict) -> dict:
@@ -39,6 +58,26 @@ def normalize_bill(raw: dict) -> dict:
 
     days = _num(raw.get("billing_period_days"), 1, 400)
     units = _num(raw.get("units_billed"), 0, 100000)
+
+    # Cross-check against the meter readings: models sometimes copy a cumulative reading
+    # (e.g. 52146) where the period's units (e.g. 563) belong.
+    meter = raw.get("meter") or {}
+    readings = {_num(meter.get("current_reading")), _num(meter.get("previous_reading"))} - {None}
+    metered = _units_from_readings(meter)
+    if metered is not None:
+        copied_a_reading = units is not None and readings and units >= 0.9 * min(readings)
+        if units is None or copied_a_reading:
+            units = metered
+            warnings.append("units_from_readings")
+        elif abs(units - metered) > 0.15 * metered:
+            # Readings on a blurry photo are often misread too, so don't overrule the
+            # printed units; ask the user to check instead.
+            warnings.append("units_mismatch")
+    metered_days = _days_between(meter.get("previous_reading_date"), meter.get("current_reading_date"))
+    if metered_days and (days is None or abs(days - metered_days) > 3):
+        days = metered_days
+        warnings.append("days_from_dates")
+
     if units is None:
         warnings.append("units_missing")
     if days is None:
@@ -50,8 +89,15 @@ def normalize_bill(raw: dict) -> dict:
         if not isinstance(row, dict):
             continue
         u = _num(row.get("units"), 0, 100000)
-        if u is not None:
-            history.append({"units": u, "days": _num(row.get("days"), 1, 400) or 30, "period_end": row.get("period_end")})
+        row_days = _num(row.get("days"), 1, 400)
+        if u is None or u in readings:
+            continue
+        if u == units and (row_days is None or abs(row_days - days) <= 1):
+            continue  # the current bill repeated as a history row
+        if units and not units / 8 <= u <= units * 4:
+            warnings.append("history_row_dropped")  # almost certainly a misread
+            continue
+        history.append({"units": u, "days": row_days or 30, "period_end": row.get("period_end")})
     if not history:
         warnings.append("no_history")
 

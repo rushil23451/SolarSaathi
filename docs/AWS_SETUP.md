@@ -26,20 +26,39 @@ For a weekend hackathon the simplest safe setup is one IAM user per team member:
 3. Open the user → *Security credentials* → *Create access key* → *Command Line Interface (CLI)*.
 4. Copy the **Access key ID** and **Secret access key**. Never paste them into code, chat or git.
 
-## Step 3. Enable Claude in Amazon Bedrock (10 min, sometimes longer)
+## Step 3. Choose the model (5 min)
 
-1. Console → switch region to **Asia Pacific (Mumbai)** (top right).
-2. Open **Amazon Bedrock** → *Model access* (or *Model catalog*).
-3. Request access to **Anthropic: Claude Opus 5.5**. Fill in the short use-case form
-   ("Student hackathon: reading electricity bills to recommend rooftop solar").
-4. Wait until the status says *Access granted*.
+The app reads bills with a vision model on Amazon Bedrock. Which models you can use depends on
+your account's plan:
 
-If Opus 5.5 access is slow to be approved, deploy with a model that is open to every Bedrock
-customer and switch later (no code change, it's a parameter):
+| Account plan | Models that work | What to do |
+| --- | --- | --- |
+| **Free plan** (new accounts) | **Amazon Nova** (Nova 2 Lite, Nova Pro) | Nothing. Nova works straight away. This is the default. |
+| **Paid plan** | Amazon Nova **and** Claude (Anthropic) | Bedrock console → *Model catalog* → Claude → submit the use-case form once |
+
+Anthropic models are sold through AWS Marketplace, which Free-plan accounts can't use. With
+Claude on a Free plan you get a confusing `404 ... model does not exist` error.
+
+Check your plan and a model's status from the terminal:
 
 ```bash
-sam deploy --parameter-overrides ModelId=anthropic.claude-opus-4-8
+aws freetier get-account-plan-state --region us-east-1
 ```
+
+```bash
+aws bedrock get-foundation-model-availability --model-id amazon.nova-2-lite-v1:0 --region ap-south-1
+```
+
+`agreementAvailability.status` must be `AVAILABLE`.
+
+Model IDs (pass one as `MODEL_ID` locally, or `ModelId` when deploying):
+
+| Model | ID to use from Mumbai |
+| --- | --- |
+| Amazon Nova 2 Lite (default, cheapest) | `global.amazon.nova-2-lite-v1:0` |
+| Amazon Nova Pro | `apac.amazon.nova-pro-v1:0` |
+| Claude Opus 5.5 (Paid plan) | `anthropic.claude-opus-5-5` |
+| Claude Haiku 5.5 (Paid plan) | `anthropic.claude-haiku-5-5` |
 
 ## Step 4. Install the tools on your laptop (15 min)
 
@@ -67,7 +86,7 @@ Enter the two keys from step 2, region `ap-south-1`, output `json`. Check it wor
 aws sts get-caller-identity
 ```
 
-## Step 5. Test Bedrock on a real bill from your laptop (5 min)
+## Step 5. Test the model on real bills from your laptop (5 min)
 
 Before deploying anything, confirm that the model reads your bills correctly:
 
@@ -76,12 +95,22 @@ source .venv/bin/activate
 python backend/scripts/try_bill.py ~/Desktop/bill_folder/bill1.webp
 ```
 
-You'll see the fields the model read and the full result. Try all four sample bills. If a
-field is wrong, improve `backend/src/solarsaathi/prompts.py` and run again. This is the
-cheapest place to tune prompts.
+You'll see the fields the model read and the full result. To score a model on all the sample
+bills at once (units, days, load, category, history):
 
-If you get an access error, step 3 isn't finished yet. If you get a model-ID error, check the
-exact ID on the Bedrock console's model page and pass it with `MODEL_ID=... python ...`.
+```bash
+cd backend && python scripts/eval_bills.py ~/Desktop/bill_folder
+```
+
+```bash
+MODEL_ID=apac.amazon.nova-pro-v1:0 python scripts/eval_bills.py ~/Desktop/bill_folder
+```
+
+If a field is often wrong, improve `backend/src/solarsaathi/prompts.py` and run again. This is
+the cheapest place to tune. Add more bills and their correct values to
+`backend/tests/fixtures/bills.json` so the score means something.
+
+If you get `404 ... does not exist` for a Claude model, see step 3 (Free plan).
 
 ## Step 6. Deploy the backend (10 min)
 
@@ -158,14 +187,14 @@ for errors, **Billing** → *Budgets* for spend, **Bedrock** → *Usage* for mod
 
 | Service | Demo-weekend usage | Cost |
 | --- | --- | --- |
-| Bedrock (Claude Opus 5.5) | ~200 bill reads + ~50 quote checks | roughly $10–20 (Bedrock pricing differs from Anthropic's list price; check the Bedrock pricing page) |
+| Bedrock (Amazon Nova 2 Lite) | ~200 bill reads + ~50 quote checks | well under $1 (check the Bedrock pricing page) |
+| Bedrock (Claude Opus 5.5, if you switch) | same usage | roughly $10–20 (check the Bedrock pricing page) |
 | Lambda, API Gateway, DynamoDB, S3 | a few thousand requests | within the free tier |
 | Polly (neural voice) | a few hundred results read aloud | within the free tier for new accounts |
 | Amplify Hosting | one small site | within the free tier |
 
-The model is the only real cost. To cut it, change `ModelId` (a faster, cheaper Claude
-model can read clear bills well) **after** checking it against your sample bills with
-`try_bill.py`.
+The model is the only real cost. Change `ModelId` only **after** scoring the new model with
+`eval_bills.py`.
 
 ## Clean up after the hackathon
 
@@ -179,8 +208,10 @@ Then delete the Amplify app in the console, and delete the IAM users' access key
 
 | Symptom | Likely cause and fix |
 | --- | --- |
+| `404 ... model does not exist` for a Claude model | Account is on the Free plan (step 3). Use Nova, or upgrade to Paid |
 | `AccessDeniedException` / 403 from Bedrock | Model access not granted yet (step 3), or wrong region |
-| Model not found | Check the exact model ID on the Bedrock console and redeploy with `ModelId=...` |
+| "on-demand throughput isn't supported" | Use the inference profile ID (`global.` / `apac.` prefix) from step 3 |
+| `No space left on device` during installs | Free up disk space (System Settings → General → Storage) |
 | `sam build` says Python 3.13 not found | `brew install python@3.13`, or `sam build --use-container` with Docker/Finch |
 | Upload fails with a CORS error | `AllowedOrigin` doesn't match the site's URL exactly (no trailing slash) |
 | Job stays "pending" | Check worker logs (`sam logs ... -n WorkerFunction`); usually Bedrock access |

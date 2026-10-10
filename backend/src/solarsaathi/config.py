@@ -12,8 +12,12 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 
 AWS_REGION = os.environ.get("AWS_REGION", "ap-south-1")
-MODEL_ID = os.environ.get("MODEL_ID", "anthropic.claude-opus-5-5")
-LLM_EFFORT = os.environ.get("LLM_EFFORT", "low")
+MODEL_ID = os.environ.get("MODEL_ID", "global.amazon.nova-2-lite-v1:0")
+LLM_EFFORT = os.environ.get("LLM_EFFORT", "low")  # Claude only
+
+
+def is_anthropic_model() -> bool:
+    return "anthropic." in MODEL_ID
 
 
 @lru_cache(maxsize=None)

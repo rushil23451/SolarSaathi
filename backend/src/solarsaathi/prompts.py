@@ -14,6 +14,14 @@ BILL_INSTRUCTION = """Read this electricity bill and reply with only this JSON o
   "category": "domestic | non_domestic | other  (from 'Tariff Category'; Residential = domestic, Non-Domestic/Commercial = non_domestic)",
   "sanctioned_load": number or null,
   "sanctioned_load_unit": "kW | kVA | null",
+  "meter": {
+    "unit": "kWh | kVAh  (the energy row that is billed)",
+    "current_reading": number or null,
+    "current_reading_date": "YYYY-MM-DD or null",
+    "previous_reading": number or null,
+    "previous_reading_date": "YYYY-MM-DD or null",
+    "multiplication_factor": number or null
+  },
   "billing_period_days": number or null,
   "units_billed": number or null,
   "history": [{"period_end": "YYYY-MM-DD or null", "days": number or null, "units": number}],
@@ -25,10 +33,15 @@ BILL_INSTRUCTION = """Read this electricity bill and reply with only this JSON o
 }
 
 Rules:
-- units_billed = units (kWh, or kVAh if that is what is billed) for THIS bill's period, from 'Current Consumption' / 'Billed Units' / 'Total Units'.
-- billing_period_days = the 'Days' figure, or the days between the two meter reading dates.
-- history = rows of the 'Consumption History' table if the bill has one (most recent first), excluding the current bill. Empty list if none.
-- current_charges_inr = this period's charges before arrears; amount_payable_inr = 'Bill Amount Payable' (0 if it says no payment required).
+- A meter READING is the large cumulative number on the meter (e.g. 52146.00). UNITS are the energy used in the period (e.g. 563). Never put a reading where units are asked for.
+- meter = the row of the meter table for the billed energy unit (kWh, or kVAh if units are billed in kVAh). Ignore kW / kVA (demand) rows.
+- units_billed = the 'Units' figure under 'Current Consumption' (or 'Total Units' in Billing Details). It is usually close to current_reading minus previous_reading.
+- billing_period_days = the 'Days' figure under 'Current Consumption'. Bills can cover 1, 2 or 3 months.
+- history = rows of the 'Consumption History' table only (columns like Period / No. of Days / Units / Total Bill Payable), most recent first, excluding the current bill. Take 'units' from the Units column, never from Total Bill Payable or from meter readings. Empty list if the bill has no such table.
+- current_charges_inr = this period's charges only (the Total Amount of Billing Details / 'Total Charges Payable' for the current period), NOT including arrears.
+- amount_payable_inr = 'Bill Amount Payable' (0 if it says no payment required).
+- Indian bills print dates as DD-MM-YYYY (09-01-2021 is 9 January 2021). Convert them to YYYY-MM-DD carefully.
+- discom = the company name exactly as printed in the header.
 - Use null for anything you cannot read clearly. Do not guess.
 - If this is not an electricity bill, set is_electricity_bill to false and everything else to null."""
 
