@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { checkText, fallbackQuestions, inr, t } from "./i18n.js";
-import { post } from "./api.js";
+import { useRef, useState } from "react";
+import { checkText, fallbackQuestions, t } from "./i18n.js";
 
 const CITIES = [
   ["New Delhi", 28.61, 77.21], ["Mumbai", 19.08, 72.88], ["Bengaluru", 12.97, 77.59],
@@ -140,117 +139,7 @@ export function Where({ lang, onNext }) {
   );
 }
 
-function Stat({ label, value }) {
-  return <div className="stat"><div className="stat-value">{value}</div><div className="stat-label">{label}</div></div>;
-}
-
-// Read the result aloud with Amazon Polly; tap again to stop. Falls back to the device's own
-// voice when Polly isn't available (e.g. running locally).
-function useSpeech() {
-  const [state, setState] = useState("idle"); // idle | loading | playing
-  const audio = useRef(null);
-  const token = useRef(0);
-
-  const stop = () => {
-    token.current += 1;
-    audio.current?.pause();
-    audio.current = null;
-    window.speechSynthesis?.cancel();
-    setState("idle");
-  };
-
-  const fallback = (lang, text) => {
-    if (!window.speechSynthesis) return setState("idle");
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang === "hi" ? "hi-IN" : "en-IN";
-    u.onend = u.onerror = () => setState("idle");
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-    setState("playing");
-  };
-
-  const play = async (lang, text) => {
-    const mine = ++token.current;
-    setState("loading");
-    try {
-      const { audio: data, contentType } = await post("/speech", { text, lang });
-      if (mine !== token.current) return; // stopped while loading
-      const a = new Audio(`data:${contentType};base64,${data}`);
-      a.onended = () => { if (audio.current === a) stop(); };
-      audio.current = a;
-      await a.play();
-      setState("playing");
-    } catch {
-      if (mine === token.current) fallback(lang, text);
-    }
-  };
-
-  useEffect(() => stop, []); // stop talking when leaving the screen
-  return { state, toggle: (lang, text) => (state === "idle" ? play(lang, text) : stop()) };
-}
-
-export function Result({ lang, analysisId, result: r, onQuote, onRestart }) {
-  const [showSteps, setShowSteps] = useState(false);
-  const speech = useSpeech();
-  const verdictClass = { yes: "good", maybe: "warn", not_worth: "bad" }[r.verdict] || "warn";
-  const shareUrl = `${location.origin}${location.pathname}?r=${analysisId}`;
-
-  const share = () => {
-    const text = t(lang, "speech")(r);
-    if (navigator.share) navigator.share({ title: "SolarSaathi", text, url: shareUrl });
-    else window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + shareUrl)}`);
-  };
-
-  return (
-    <div className="stack">
-      <div className={`banner ${verdictClass}`}>
-        <h2>{t(lang, "verdict_" + r.verdict)}</h2>
-        {r.reason && <p>{t(lang, "reason_" + r.reason)}</p>}
-      </div>
-
-      {r.system_kw > 0 && r.verdict !== "not_worth" && (
-        <div className="stats">
-          <Stat label={t(lang, "youPay")} value={inr(r.net_cost)} />
-          <Stat label={t(lang, "saving")} value={inr(r.monthly_saving)} />
-          <Stat label={t(lang, "payback")} value={`${r.payback_years} ${t(lang, "years")}`} />
-          <Stat label={t(lang, "co2")} value={`${r.co2_tonnes_year} ${t(lang, "tonnes")}`} />
-        </div>
-      )}
-
-      {r.bill_now && (
-        <table className="facts"><tbody>
-          {r.system_kw > 0 && <tr><th>{t(lang, "size")}</th><td>{r.system_kw} kW</td></tr>}
-          <tr><th>{t(lang, "billNow")}</th><td>{inr(r.bill_now.payable)} · {r.monthly_units} {t(lang, "roughUnits")}</td></tr>
-          {r.bill_with_solar && <tr><th>{t(lang, "billSolar")}</th><td>{inr(r.bill_with_solar.payable)}</td></tr>}
-        </tbody></table>
-      )}
-
-      {(r.flags || []).map((f) => <p key={f} className="note">ⓘ {t(lang, "flag_" + f)}</p>)}
-
-      <div className="row">
-        <button className="secondary" aria-pressed={speech.state !== "idle"} onClick={() => speech.toggle(lang, t(lang, "speech")(r))}>
-          {speech.state === "idle" ? `▶ ${t(lang, "listen")}` : `■ ${t(lang, "stop")}`}
-        </button>
-        <button className="secondary" onClick={share}>↗ {t(lang, "share")}</button>
-      </div>
-
-      {r.working && (
-        <details>
-          <summary>{t(lang, "showWorking")}</summary>
-          <ul className="working">
-            {r.working.map((w) => <li key={w.key}><b>{w.value}</b> <span className="muted">— {w.note}</span></li>)}
-          </ul>
-        </details>
-      )}
-
-      <button className="secondary" onClick={() => setShowSteps(!showSteps)}>{t(lang, "nextSteps")}</button>
-      {showSteps && <ol className="steps">{t(lang, "steps").map((s) => <li key={s}>{s}</li>)}</ol>}
-
-      <button className="primary" onClick={onQuote}>📄 {t(lang, "checkAQuote")}</button>
-      <button className="link" onClick={onRestart}>{t(lang, "startOver")}</button>
-    </div>
-  );
-}
+export { Result } from "./result.jsx";
 
 export function QuoteReport({ lang, report, onRestart }) {
   const [copied, setCopied] = useState(false);

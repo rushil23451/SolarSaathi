@@ -29,36 +29,46 @@ def _cache_table():
     return boto3.resource("dynamodb").Table(name)
 
 
-def fetch_from_nasa(lat: float, lon: float, timeout: float = 8.0) -> float:
+MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+
+
+def fetch_from_nasa(lat: float, lon: float, timeout: float = 8.0) -> tuple[float, list[float]]:
+    """Long-term average sunlight: (annual, [Jan..Dec]) in kWh/m²/day."""
     with urllib.request.urlopen(NASA_URL.format(lat=lat, lon=lon), timeout=timeout) as resp:
         data = json.load(resp)
-    value = data["properties"]["parameter"]["ALLSKY_SFC_SW_DWN"]["ANN"]
-    if value is None or value <= 0:
-        raise ValueError("NASA POWER returned no annual value")
-    return float(value)
+    values = data["properties"]["parameter"]["ALLSKY_SFC_SW_DWN"]
+    annual, monthly = values.get("ANN"), [values.get(m) for m in MONTHS]
+    if annual is None or annual <= 0 or any(v is None or v <= 0 for v in monthly):
+        raise ValueError("NASA POWER returned incomplete values")
+    return float(annual), [float(v) for v in monthly]
 
 
 def annual_ghi(lat: float, lon: float) -> dict:
-    """Return {"ghi": kWh/m2/day, "source": ...}. Never raises: falls back to a national average."""
+    """Return {"ghi": annual kWh/m²/day, "monthly": [Jan..Dec], "source": ...}.
+
+    Never raises: falls back to a national average (same value every month)."""
     cell = f"{round(lat, 1)}#{round(lon, 1)}"
     table = _cache_table()
     if table is not None:
         try:
             item = table.get_item(Key={"cell": cell}).get("Item")
-            if item:
-                return {"ghi": float(item["ghi"]), "source": "NASA POWER (cached)"}
+            if item and item.get("monthly"):
+                return {"ghi": float(item["ghi"]), "monthly": [float(v) for v in item["monthly"]],
+                        "source": "NASA POWER (cached)"}
         except Exception:
             log.exception("irradiance cache read failed")
 
     try:
-        ghi = fetch_from_nasa(round(lat, 1), round(lon, 1))
+        ghi, monthly = fetch_from_nasa(round(lat, 1), round(lon, 1))
     except Exception:
         log.exception("NASA POWER request failed, using fallback")
-        return {"ghi": config.solar()["fallback_ghi_kwh_m2_day"], "source": "fallback (India average)"}
+        fallback = config.solar()["fallback_ghi_kwh_m2_day"]
+        return {"ghi": fallback, "monthly": [fallback] * 12, "source": "fallback (India average)"}
 
     if table is not None:
         try:
-            table.put_item(Item={"cell": cell, "ghi": Decimal(str(ghi))})
+            table.put_item(Item={"cell": cell, "ghi": Decimal(str(ghi)),
+                                 "monthly": [Decimal(str(v)) for v in monthly]})
         except Exception:
             log.exception("irradiance cache write failed")
-    return {"ghi": ghi, "source": "NASA POWER"}
+    return {"ghi": ghi, "monthly": monthly, "source": "NASA POWER"}

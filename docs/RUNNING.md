@@ -174,10 +174,17 @@ Nova on Bedrock reads the bill: units, sanctioned load and the past months' hist
 app warns when a photo was hard to read. "The AI only *reads*. Every number after this comes
 from plain, tested Python code, not from the AI."
 
-**4. The answer (60 s).** Pick **New Delhi** and the roof size, then tap **Show my answer**.
-Walk through the verdict, the cost after the PM Surya Ghar subsidy, the monthly saving, the
-payback period and the CO₂ avoided. Tap **Show my working** to show that every number is
-explained. Switch to **हिंदी** and tap **Listen**.
+**4. The answer (90 s).** Pick **New Delhi** and the roof size, then tap **Show my answer**.
+- The verdict and the four headline numbers: you pay ₹81,000 after subsidy, save about ₹1,240 a
+  month, pay back in 5.6 years, and avoid 2.4 tonnes of CO₂ a year.
+- **Solar covers 77%** of your use (orange vs blue bar).
+- **Your bill ₹1,240 → ₹0**, with the reason: the leftover grid units stay under Delhi's free 200
+  units. Tap a winter month on the chart to show December getting close to the line.
+- **When it pays for itself**: the line starts at minus ₹81,000 and crosses zero at 5.6 years. The
+  small dip at year 12 is the inverter replacement. "We count maintenance and the inverter."
+- **If you take a loan**: EMI ₹940 vs saving ₹1,240. "Solar pays its own EMI from month one."
+- Open any **How we worked this out** to show the full breakdown, then switch to **हिंदी** and
+  tap **Listen** (tap again to stop).
 
 **5. Check a vendor quote (60 s).** Tap **Check a vendor quote** → choose
 `samples/sample_quote.pdf`. "A Strands agent reads the quote and runs nine checks." Show the

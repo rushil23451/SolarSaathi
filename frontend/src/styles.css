@@ -12,6 +12,9 @@
   --warn-bg: #fff3d6;
   --bad: #b3261e;
   --bad-bg: #fce8e6;
+  --solar: #eb6834;
+  --grid: #2a78d6;
+  --chart-line: #e6dccb;
   color-scheme: light;
 }
 
@@ -30,6 +33,9 @@
     --warn-bg: #3a2e12;
     --bad: #f2a29b;
     --bad-bg: #3d1a17;
+    --solar: #d95926;
+    --grid: #3987e5;
+    --chart-line: #3a3329;
     color-scheme: dark;
   }
 }
@@ -118,3 +124,62 @@ summary { cursor: pointer; font-weight: 600; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+
+/* ---------- result: metric cards ---------- */
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.metric-head { display: flex; align-items: center; gap: 8px; }
+.metric-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--muted); }
+.metric-icon { font-size: 18px; }
+.metric-value { font-size: 28px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.metric-sub { font-size: 15px; color: var(--muted); margin-top: -2px; }
+.metric-why { margin: 4px 0 0; font-size: 15px; }
+.metric-more { border: 0; padding: 0; background: none; margin-top: 4px; }
+.metric-more summary { font-size: 15px; color: var(--accent); }
+.metric-more[open] summary { margin-bottom: 8px; }
+
+.breakdown { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.breakdown th { text-align: left; font-weight: 400; color: var(--muted); padding: 6px 8px 6px 0; }
+.breakdown td { text-align: right; padding: 6px 0 6px 8px; white-space: nowrap; }
+.breakdown thead th { color: var(--text); font-weight: 600; text-align: right; }
+.breakdown thead th:first-child { text-align: left; }
+.breakdown tr + tr, .breakdown tbody tr:first-child { border-top: 1px solid var(--border); }
+.breakdown tr.total th, .breakdown tr.total td { font-weight: 700; color: var(--text); border-top: 2px solid var(--text); }
+.breakdown.four th, .breakdown.four td { padding: 4px 6px 4px 0; }
+
+/* ---------- charts ---------- */
+.chart { margin: 4px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.chart svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
+.chart .axis { font-size: 10px; fill: var(--muted); }
+.chart .axis.strong { fill: var(--text); font-weight: 600; }
+.chart .gridline { stroke: var(--chart-line); stroke-width: 1; }
+.chart .baseline { stroke: var(--muted); stroke-width: 1; }
+.chart .limit { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.chart .limit-label { fill: var(--text); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+.chart .bar.solar { fill: var(--solar); }
+.chart .bar.grid { fill: var(--grid); }
+.chart g.dim .bar { opacity: 0.45; }
+.chart .money-line { fill: none; stroke: var(--grid); stroke-width: 2; stroke-linejoin: round; }
+.chart .breakeven { fill: var(--good); stroke: var(--surface); stroke-width: 2; }
+.chart .crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }
+.chart .dot { fill: var(--grid); stroke: var(--surface); stroke-width: 2; }
+.chart figcaption { margin: 0; }
+.tip { min-height: 22px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.table-view { border: 0; padding: 0; background: none; }
+.table-view summary { font-size: 14px; font-weight: 400; color: var(--muted); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.swatch.solar, .seg.solar, .hbar-fill.solar { background: var(--solar); }
+.swatch.grid, .seg.grid, .hbar-fill.grid { background: var(--grid); }
+
+.coverage { display: flex; gap: 2px; height: 28px; border-radius: 8px; overflow: hidden; margin-top: 4px; }
+.coverage .seg { display: flex; align-items: center; padding: 0 8px; color: #fff; font-size: 13px; font-weight: 600; min-width: 0; }
+.coverage .seg span { white-space: nowrap; overflow: hidden; }
+
+.hbars { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.hbar { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 8px; font-size: 14px; }
+.hbar-label { color: var(--muted); }
+.hbar-track { height: 14px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.hbar-fill { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.hbar-value { font-variant-numeric: tabular-nums; font-weight: 600; }

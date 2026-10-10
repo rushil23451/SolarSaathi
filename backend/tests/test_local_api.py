@@ -22,7 +22,7 @@ FIXTURES = json.loads((Path(__file__).parent / "fixtures/bills.json").read_text(
 @pytest.fixture()
 def server(monkeypatch):
     monkeypatch.setattr(llm, "read_to_json", lambda *a, **k: dict(FIXTURES["brpl_domestic_may25"]["bill"]))
-    monkeypatch.setattr(irradiance, "fetch_from_nasa", lambda lat, lon: 4.89)
+    monkeypatch.setattr(irradiance, "fetch_from_nasa", lambda lat, lon: (4.89, [3.09, 4.35, 5.65, 6.58, 6.71, 6.09, 5.01, 4.89, 5.06, 4.66, 3.58, 3.03]))
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), local_api.Handler)
     local_api.base_url = f"http://127.0.0.1:{httpd.server_port}"
     threading.Thread(target=httpd.serve_forever, daemon=True).start()

@@ -15,7 +15,7 @@ from solarsaathi import calc, irradiance  # noqa: E402
 DELHI = (28.61, 77.21)
 
 fixtures = json.loads((Path(__file__).resolve().parents[1] / "tests/fixtures/bills.json").read_text())
-ghi = irradiance.annual_ghi(*DELHI) if "--live" in sys.argv else {"ghi": 4.89, "source": "NASA POWER (saved value)"}
+ghi = irradiance.annual_ghi(*DELHI) if "--live" in sys.argv else {"ghi": 4.89, "monthly": [3.09, 4.35, 5.65, 6.58, 6.71, 6.09, 5.01, 4.89, 5.06, 4.66, 3.58, 3.03], "source": "NASA POWER (saved value)"}
 
 for name, case in fixtures.items():
     if name.startswith("_"):
