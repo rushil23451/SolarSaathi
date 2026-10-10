@@ -88,3 +88,13 @@ def test_size_details_for_the_roof(bills):
     r = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown")
     assert r["size"]["roof_sqft"] == r["system_kw"] * 100
     assert r["size"]["panels"] * r["size"]["panel_watt"] >= r["system_kw"] * 1000
+
+
+def test_payback_scenarios_bracket_the_expected_case(bills):
+    r = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown")
+    by_growth = {sc["growth_pct"]: sc for sc in r["scenarios"]}
+    assert sorted(by_growth) == [0, 3, 5]
+    # Faster price rises mean bigger savings: earlier payback, more money after 25 years.
+    assert by_growth[0]["payback_years"] >= by_growth[3]["payback_years"] >= by_growth[5]["payback_years"]
+    assert by_growth[0]["net_25"] < by_growth[3]["net_25"] < by_growth[5]["net_25"]
+    assert by_growth[3]["payback_years"] == r["payback_years"]

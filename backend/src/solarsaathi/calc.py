@@ -151,6 +151,12 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
                     "note": f"{s['grid_emission_kg_per_kwh']} kg CO₂ per unit — {s['grid_emission_source']}"})
     loan = s["loan"]
     emi = loan_emi(net_cost, loan["rate_pct"], loan["years"])
+    # The same cash flow if electricity prices rise slower or faster than we assume.
+    scenarios = []
+    for g in s["tariff_growth_scenarios_pct"]:
+        alt = cash_flow(net_cost, annual_saving, kw, gbi_year, state.get("gbi_years", 0) if gbi_on else 0, growth_pct=g)
+        scenarios.append({"growth_pct": g, "payback_years": alt["payback_years"], "net_25": alt["net_25"],
+                          "years": alt["years"]})
 
     # Step 7: the honest verdict
     v = s["verdict"]
@@ -195,6 +201,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
         "payback_years": payback,
         "lifetime_savings": flow["net_25"],
         "lifetime": flow,
+        "scenarios": scenarios,
         "months": [{k: m[k] for k in ("month", "use", "solar", "grid", "now", "with_solar")} for m in months],
         "loan": {"amount": round(net_cost), "rate_pct": loan["rate_pct"], "years": loan["years"],
                  "emi": round(emi), "net_monthly": round(monthly_saving - emi)},
@@ -249,11 +256,13 @@ def loan_emi(principal: float, rate_pct: float, years: int) -> float:
     return principal / n if r == 0 else principal * r * (1 + r) ** n / ((1 + r) ** n - 1)
 
 
-def cash_flow(net_cost: float, first_year_saving: float, kw: float, gbi_year: float = 0.0, gbi_years: int = 0) -> dict:
+def cash_flow(net_cost: float, first_year_saving: float, kw: float, gbi_year: float = 0.0, gbi_years: int = 0,
+              growth_pct: float | None = None) -> dict:
     """Money in and out over the system's life. Savings grow with electricity prices and shrink
     as panels age; yearly maintenance and one inverter replacement are subtracted."""
     s = config.solar()
-    growth, degr = s["tariff_growth_pct_per_year"] / 100, s["degradation_per_year"]
+    growth = (s["tariff_growth_pct_per_year"] if growth_pct is None else growth_pct) / 100
+    degr = s["degradation_per_year"]
     maintenance = s["maintenance_inr_per_kw_year"] * kw
     inv = s["inverter_replacement"]
     cumulative, payback, saved, costs = -net_cost, None, 0.0, 0.0
