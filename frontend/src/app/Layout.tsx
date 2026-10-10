@@ -15,6 +15,8 @@ function LangSwitch() {
           onClick={() => setLang(l)}
           aria-pressed={lang === l}
           lang={l}
+          // Shown in the system font while English is active, so English pages never load the Hindi font file.
+          style={l === "hi" && lang !== "hi" ? { fontFamily: "system-ui, 'Noto Sans Devanagari', sans-serif" } : undefined}
           className={`h-9 rounded-full px-3.5 text-[15px] font-medium transition-colors duration-150 ${
             lang === l ? "bg-ink text-paper" : "text-ink hover:bg-line/60"
           }`}
