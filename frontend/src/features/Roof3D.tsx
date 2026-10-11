@@ -51,18 +51,21 @@ function layoutRoof(slots: number) {
 
 /** Each panel's share of the system figures the backend returned. */
 function perPanel(r: Analysis, p: number) {
-  const solar = (r.months ?? []).map((m) => Math.min(m.solar, m.use));
+  const solar = (r.months ?? []).map((m) => m.solar); // what the panels make, incl. any surplus
   const best = solar.length ? solar.indexOf(Math.max(...solar)) : -1;
   const worst = solar.length ? solar.indexOf(Math.min(...solar)) : -1;
   return {
-    solar, // whole system, per calendar month, units used at home
+    solar, // whole system, per calendar month
     month: (r.solar_units_month ?? 0) / p,
     year: ((r.solar_units_month ?? 0) * 12) / p,
     best: best >= 0 ? ([best, solar[best] / p] as const) : null,
     worst: worst >= 0 ? ([worst, solar[worst] / p] as const) : null,
     saving: (r.annual_benefit ?? 0) / p,
     life: r.lifetime ? r.lifetime.total_saved / p : null,
-    co2: ((r.co2_tonnes_year ?? 0) * 1000) / p,
+    // from unrounded units (co2_tonnes_year is rounded to 0.1 t, ~2% off per panel)
+    co2: r.assumptions ? ((r.solar_units_month ?? 0) * 12 * r.assumptions.emission_kg_per_unit) / p : ((r.co2_tonnes_year ?? 0) * 1000) / p,
+    // a free slot would hold a real 545 W panel: what that makes here, per month
+    extra: ((r.size?.yield_per_kw_year ?? 0) * PANEL_KW) / 12,
   };
 }
 
@@ -126,7 +129,8 @@ export function Roof3D(props: Props) {
   const px = (m: number) => `${(m * s).toFixed(1)}px`;
   const wallH = Math.min(3 * s, 76);
   const lip = Math.max(4, 0.35 * s);
-  const kwp = Math.round(panels * PANEL_KW * 10) / 10;
+  // The report's system size; on the location page, the backend's rule of 100 sq ft per kW.
+  const kwp = r ? r.system_kw! : sqft! / 100;
   const usedSqft = r ? r.size!.roof_sqft : panels * CELL_M2 * SQFT_PER_M2;
 
   // 0.3–1: how strong this month is against the best month. Drives glow, sun height and flow speed.
@@ -170,9 +174,9 @@ export function Roof3D(props: Props) {
   // The text under the picture: the selected panel in full, else the roof summary and the month.
   let info: ReactNode;
   if (!each) {
-    info = <p>{L.preview(L.sizes[choice!], panels, kwp)}</p>;
+    info = <p>{L.preview(L.sizes[choice!], sqft!, kwp, panels)}</p>;
   } else if (active != null && active >= panels) {
-    info = <p>{L.ghost(each.month)}</p>;
+    info = <p>{L.ghost(each.extra)}</p>;
   } else if (active != null) {
     const rows: [string, string][] = [
       [L.power, "545 W"],
@@ -205,7 +209,7 @@ export function Roof3D(props: Props) {
     info = (
       <>
         <p>{L.summary(panels, kwp, usedSqft, sqft, slots - panels)} <span className="text-muted">{L.tapHint}</span></p>
-        {month != null && <p className="nums text-ink">{L.monthLine(MONTHS[lang][month], solar[month] / panels, solar[month], panels)}</p>}
+        {month != null && <p className="nums text-ink">{L.monthLine(MONTHS[lang][month], solar[month] / panels, solar[month], panels, r!.months![month].use)}</p>}
       </>
     );
   }
@@ -261,7 +265,7 @@ export function Roof3D(props: Props) {
               if (i >= panels) {
                 return (
                   <button key={i} type="button" className={`roof3d-ghost${active === i ? " on" : ""}`} style={pos}
-                    aria-label={each ? L.ghost(each.month) : L.free} disabled={!each}
+                    aria-label={each ? L.ghost(each.extra) : L.free} disabled={!each}
                     onPointerEnter={pick(i)} onClick={pick(i)} onFocus={() => focusPanel(i)} />
                 );
               }

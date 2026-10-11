@@ -628,10 +628,10 @@ export const en = {
     turn: "Drag to turn",
     south: "South side",
     sizes: { small: "small", medium: "medium", large: "large" },
-    preview: (size: string, panels: number, k: number) =>
-      `A ${size} roof fits about ${panels} panels (≈ ${kw(k)}). Roughly 100 sq ft per kW, with gaps so rows don’t shade each other.`,
+    preview: (size: string, sqft: number, k: number, panels: number) =>
+      `A ${size} roof (about ${num(sqft)} sq ft) fits up to about ${kw(k)}, roughly ${panels} panels. We allow about 100 sq ft per kW, with gaps so rows don’t shade each other.`,
     summary: (panels: number, k: number, used: number, roof: number | null, free: number) =>
-      `${panels} panels × 545 W = ${kw(k)}, on about ${num(used)} sq ft of shadow-free roof` +
+      `${panels} panels for your ${kw(k)} system, on about ${num(used)} sq ft of shadow-free roof` +
       (roof ? ` out of about ${num(roof)} sq ft${free > 0 ? `, with room for ${free} more` : ""}.` : "."),
     tapHint: "Tap a panel to see what it makes.",
     panel: (i: number, n: number) => `Panel ${i} of ${n}`,
@@ -640,7 +640,7 @@ export const en = {
     range: "Best and lowest month",
     perYear: "Makes a year",
     saves: "Its share of your saving",
-    life: "Its share over 25 years",
+    life: "Its share of 25 years’ savings (before costs)",
     co2: "CO₂ it avoids",
     units: (n: number) => `${num(n)} units`,
     perYearInr: (s: string) => `${s} a year`,
@@ -648,16 +648,17 @@ export const en = {
     note: "Each panel’s share of the whole system. Real output depends on shade, dust and tilt.",
     ghost: (units: number) => `Free space for one more panel: +545 W, about +${num(units)} units a month.`,
     free: "Free space for one more panel",
-    chipAvg: "a month on average",
-    chipMonth: (m: string) => `in ${m}`,
+    chipAvg: "made a month on average",
+    chipMonth: (m: string) => `made in ${m}`,
     chipPanels: (n: number) => `${n} panels`,
-    monthLine: (m: string, per: number, total: number, p: number) =>
-      `${m}: each panel makes about ${num(per)} units; all ${p} together about ${num(total)}.`,
+    monthLine: (m: string, per: number, total: number, p: number, use: number) =>
+      `${m}: each panel makes about ${num(per)} units; all ${p} together about ${num(total)}.` +
+      (total > use ? ` That’s more than you use (${num(use)}); the extra goes to the grid and earns nothing in this estimate.` : ""),
     play: "Play the year",
     pause: "Pause",
     yearLabel: "Pick a month",
     tipAvg: "units a month",
-    tipMonth: (m: string) => `units in ${m}`,
+    tipMonth: (m: string) => `units made in ${m}`,
     tipSave: "saved a year",
     tipCo2: "kg CO₂ avoided a year",
   },
