@@ -64,7 +64,9 @@ def test_month_by_month_explains_the_zero_bill(bills):
     assert r["grid_units_month"] > 0
     # Every month's leftover grid use stays under Delhi's free 200 units, so the bill is zero.
     assert r["free_units_limit"] == 200
-    assert all(m["grid"] <= 200 for m in r["months"]) and r["zero_bill_months"] == 12
+    # A month's bill is zero exactly when its leftover grid use stays under Delhi's free 200 units.
+    assert r["zero_bill_months"] == sum(1 for m in r["months"] if m["grid"] <= 200)
+    assert r["zero_bill_months"] >= 10
     # Winter sun is weaker than summer sun.
     assert r["months"][11]["solar"] < r["months"][4]["solar"]
 
@@ -98,3 +100,14 @@ def test_payback_scenarios_bracket_the_expected_case(bills):
     assert by_growth[0]["payback_years"] >= by_growth[3]["payback_years"] >= by_growth[5]["payback_years"]
     assert by_growth[0]["net_25"] < by_growth[3]["net_25"] < by_growth[5]["net_25"]
     assert by_growth[3]["payback_years"] == r["payback_years"]
+
+
+def test_months_follow_the_bills_where_they_cover_them(bills):
+    rates = calc.seasonal_use(bills["brpl_domestic_may25"], 367)
+    covered = [m + 1 for m, (_, from_bills) in enumerate(rates) if from_bills]
+    # Bills cover 26 Oct 2024 to 25 May 2025; October has only 6 of those days (< 7), so it and
+    # Jun-Sep fall back to the average.
+    assert covered == [1, 2, 3, 4, 5, 11, 12]
+    assert rates[4][0] > rates[10][0]  # May (AC season) uses more per day than November
+    r = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown")
+    assert [m["from_bills"] for m in r["months"]].count(True) == 7

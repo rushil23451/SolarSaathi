@@ -6,7 +6,7 @@ field still goes to the user's confirmation screen before any calculation runs.
 
 from datetime import date
 
-from . import llm, prompts
+from . import llm, pages, prompts
 
 CATEGORIES = {"domestic", "non_domestic", "other"}
 QUOTE_ITEMS = {"mounting_structure", "dc_ac_cabling", "earthing", "lightning_arrester", "net_meter_process", "installation"}
@@ -33,6 +33,13 @@ def _units_from_readings(meter: dict) -> float | None:
     return used if used <= 100000 else None
 
 
+def _iso(value) -> str | None:
+    try:
+        return date.fromisoformat(str(value)).isoformat()
+    except ValueError:
+        return None
+
+
 def _days_between(start, end) -> int | None:
     try:
         d = (date.fromisoformat(str(end)) - date.fromisoformat(str(start))).days
@@ -56,16 +63,31 @@ def normalize_bill(raw: dict) -> dict:
     if load is None:
         warnings.append("load_missing")
 
-    days = _num(raw.get("billing_period_days"), 1, 400)
+    meter = raw.get("meter") or {}
+    # This bill's own period, so the calculation can place its use in the right months.
+    period = (_iso(meter.get("previous_reading_date")), _iso(meter.get("current_reading_date")))
+    # The Days and Unit cells of the kWh row are the same values as billing_period_days and
+    # units_billed; use them when the top-level fields are missing.
+    days = _num(raw.get("billing_period_days"), 1, 400) or _num(meter.get("days"), 1, 400)
     units = _num(raw.get("units_billed"), 0, 100000)
+    if units is None:
+        units = _num(meter.get("units"), 0, 100000)
+    # "Total Units" in Billing Details is what the discom actually charged for. Shops are often
+    # billed in kVAh, and models tend to copy the kWh row instead (1,156 instead of 1,220).
+    total = _num(raw.get("billing_total_units"), 1, 100000)
+    if total is not None and units is not None and abs(total - units) > 0.5:
+        units = total
+        meter = {}  # the readings belong to the other register; don't cross-check against them
 
     # Cross-check against the meter readings: models sometimes copy a cumulative reading
     # (e.g. 52146) where the period's units (e.g. 563) belong.
-    meter = raw.get("meter") or {}
     readings = {_num(meter.get("current_reading")), _num(meter.get("previous_reading"))} - {None}
     metered = _units_from_readings(meter)
     if metered is not None:
-        copied_a_reading = units is not None and readings and units >= 0.9 * min(readings)
+        # A copied reading equals one of the readings, or dwarfs the metered use. (Comparing
+        # against the readings' size alone fails on new meters with small readings, like 884.)
+        copied_a_reading = units is not None and (
+            any(abs(units - r) <= 1 for r in readings) or units > 5 * metered)
         if units is None or copied_a_reading:
             units = metered
             warnings.append("units_from_readings")
@@ -90,14 +112,21 @@ def normalize_bill(raw: dict) -> dict:
             continue
         u = _num(row.get("units"), 0, 100000)
         row_days = _num(row.get("days"), 1, 400)
-        if u is None or u in readings:
-            continue
+        # Bills count both ends of the period (27-03 to 25-04 is 30 days), so trust the dates
+        # when the Days cell was misread.
+        span = _days_between(row.get("period_start"), row.get("period_end"))
+        if span and (row_days is None or abs(row_days - (span + 1)) > 2):
+            row_days = span + 1
+        amount = _num(row.get("bill_amount"), 0, 1e7)
+        if u is None or u in readings or (amount is not None and u == amount):
+            continue  # a meter reading or the bill amount copied into the Units column
         if u == units and (row_days is None or abs(row_days - days) <= 1):
             continue  # the current bill repeated as a history row
         if units and not units / 8 <= u <= units * 4:
             warnings.append("history_row_dropped")  # almost certainly a misread
             continue
-        history.append({"units": u, "days": row_days or 30, "period_end": row.get("period_end")})
+        history.append({"units": u, "days": row_days or 30, "period_start": row.get("period_start"),
+                        "period_end": row.get("period_end")})
     if not history:
         warnings.append("no_history")
 
@@ -112,6 +141,8 @@ def normalize_bill(raw: dict) -> dict:
         "billing_period_days": days,
         "units_billed": units,
         "history": history[:12],
+        "period_start": period[0] if _days_between(*period) else None,
+        "period_end": period[1] if _days_between(*period) else None,
         "current_charges_inr": _num(raw.get("current_charges_inr")),
         "amount_payable_inr": _num(raw.get("amount_payable_inr"), -1e7, 1e7),
         "bill_month": raw.get("bill_month"),
@@ -148,8 +179,11 @@ def normalize_quote(raw: dict) -> dict:
 
 
 def read_bill(data: bytes, media_type: str) -> dict:
-    return normalize_bill(llm.read_to_json(data, media_type, prompts.BILL_SYSTEM, prompts.BILL_INSTRUCTION))
+    images = pages.bill_images(data, media_type)
+    instruction = prompts.BILL_INSTRUCTION + (prompts.BILL_ZOOM_NOTE if images else "")
+    return normalize_bill(llm.read_to_json(data, media_type, prompts.BILL_SYSTEM, instruction, images))
 
 
 def read_quote(data: bytes, media_type: str) -> dict:
-    return normalize_quote(llm.read_to_json(data, media_type, prompts.QUOTE_SYSTEM, prompts.QUOTE_INSTRUCTION))
+    images = pages.document_images(data, media_type)
+    return normalize_quote(llm.read_to_json(data, media_type, prompts.QUOTE_SYSTEM, prompts.QUOTE_INSTRUCTION, images))

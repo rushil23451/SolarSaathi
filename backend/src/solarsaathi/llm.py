@@ -5,8 +5,9 @@ We ask for JSON in the prompt, parse it ourselves, and ask once more if the repl
 valid JSON.
 
 Two model families are supported, chosen by MODEL_ID:
-- Amazon Nova (e.g. global.amazon.nova-2-lite-v1:0) through the Bedrock Converse API.
-  Works on AWS Free plan accounts.
+- Any Converse-API vision model: Kimi K2.5 (moonshotai.kimi-k2.5, the default: best on our bill
+  tests), Qwen3-VL, Amazon Nova. These work on AWS Free plan accounts. If the main model fails
+  (e.g. throttled), FALLBACK_MODEL_ID (Nova 2 Lite) is tried once.
 - Claude (e.g. anthropic.claude-opus-5-5) through Claude in Amazon Bedrock (Messages API).
   Needs an account that can subscribe to Anthropic models (Paid plan).
 """
@@ -14,6 +15,8 @@ Two model families are supported, chosen by MODEL_ID:
 import base64
 import json
 import logging
+
+from botocore.exceptions import ClientError
 
 from . import config
 
@@ -61,11 +64,32 @@ def _converse_file_block(data: bytes, media_type: str) -> dict:
     return {"document": {"format": "pdf", "name": "document", "source": {"bytes": data}}}
 
 
-def _read_converse(data: bytes, media_type: str, system: str, instruction: str) -> dict:
-    messages = [{"role": "user", "content": [_converse_file_block(data, media_type), {"text": instruction}]}]
+def _read_converse(data: bytes, media_type: str, system: str, instruction: str, images: list[bytes] | None = None) -> dict:
+    files = ([{"image": {"format": "jpeg", "source": {"bytes": img}}} for img in images] if images
+             else [_converse_file_block(data, media_type)])
+    messages = [{"role": "user", "content": [*files, {"text": instruction}]}]
+    models = [config.MODEL_ID] + ([config.FALLBACK_MODEL_ID] if config.FALLBACK_MODEL_ID not in ("", config.MODEL_ID) else [])
+    for i, model in enumerate(models):
+        try:
+            return _converse_json(model, system, list(messages))
+        except ClientError as e:
+            # Throttled (daily token limits on new accounts), not enabled, or not available:
+            # try the fallback model rather than failing the person's upload.
+            code = e.response.get("Error", {}).get("Code", "")
+            if i + 1 < len(models) and code in FALLBACK_ERRORS:
+                log.warning("model %s failed with %s; falling back to %s", model, code, models[i + 1])
+                continue
+            raise
+
+
+FALLBACK_ERRORS = {"ThrottlingException", "AccessDeniedException", "ValidationException", "ResourceNotFoundException",
+                   "ServiceUnavailableException", "ModelNotReadyException", "ModelErrorException", "ModelTimeoutException"}
+
+
+def _converse_json(model: str, system: str, messages: list) -> dict:
     for attempt in range(2):
         response = _bedrock_runtime().converse(
-            modelId=config.MODEL_ID, system=[{"text": system}], messages=messages,
+            modelId=model, system=[{"text": system}], messages=messages,
             inferenceConfig={"maxTokens": 4000, "temperature": 0})
         message = response["output"]["message"]
         if response.get("stopReason") == "content_filtered":
@@ -109,8 +133,10 @@ def _anthropic_create(messages: list, system: str):
     return _anthropic().messages.create(**kwargs)
 
 
-def _read_anthropic(data: bytes, media_type: str, system: str, instruction: str) -> dict:
-    messages = [{"role": "user", "content": [_anthropic_file_block(data, media_type), {"type": "text", "text": instruction}]}]
+def _read_anthropic(data: bytes, media_type: str, system: str, instruction: str, images: list[bytes] | None = None) -> dict:
+    files = ([_anthropic_file_block(img, "image/jpeg") for img in images] if images
+             else [_anthropic_file_block(data, media_type)])
+    messages = [{"role": "user", "content": [*files, {"type": "text", "text": instruction}]}]
     for attempt in range(2):
         response = _anthropic_create(messages, system)
         if response.stop_reason == "refusal":
@@ -125,8 +151,9 @@ def _read_anthropic(data: bytes, media_type: str, system: str, instruction: str)
     raise ReadError("could not get valid JSON from the model")
 
 
-def read_to_json(data: bytes, media_type: str, system: str, instruction: str) -> dict:
+def read_to_json(data: bytes, media_type: str, system: str, instruction: str, images: list[bytes] | None = None) -> dict:
+    """Send the document (or prepared page images, if given) with the instruction; return the JSON reply."""
     _check_type(media_type)
     if config.is_anthropic_model():
-        return _read_anthropic(data, media_type, system, instruction)
-    return _read_converse(data, media_type, system, instruction)
+        return _read_anthropic(data, media_type, system, instruction, images)
+    return _read_converse(data, media_type, system, instruction, images)

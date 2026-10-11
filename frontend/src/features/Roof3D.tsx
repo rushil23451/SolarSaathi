@@ -8,6 +8,7 @@
 // backend's system totals divided by the number of panels; nothing about money or energy is
 // calculated here.
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { Lightning } from "@phosphor-icons/react";
 import { useLang } from "../i18n";
 import { inr, num } from "../lib/format";
 import { MONTHS } from "./report/charts";
@@ -101,7 +102,9 @@ export function Roof3D(props: Props) {
   const L = t.roof3d;
   const r = props.r;
   const choice = r ? roofFromLimit(r.size?.roof_limit_kw) : props.roof!;
-  const sqft = choice ? ROOF_SQFT[choice] : null;
+  // "Large" only means more than 300 sq ft, so the report never claims a size for it (or free slots
+  // on it); the location-page preview draws an example large roof and says so.
+  const sqft = choice && !(r && choice === "large") ? ROOF_SQFT[choice] : null;
   const panels = r ? r.size!.panels : slotsFor(sqft!);
   const slots = Math.max(panels, sqft ? slotsFor(sqft) : panels);
   const { W, D, cells } = layoutRoof(slots);
@@ -174,7 +177,7 @@ export function Roof3D(props: Props) {
   // The text under the picture: the selected panel in full, else the roof summary and the month.
   let info: ReactNode;
   if (!each) {
-    info = <p>{L.preview(L.sizes[choice!], sqft!, kwp, panels)}</p>;
+    info = <p>{choice === "large" ? L.previewLarge(panels) : L.preview(L.sizes[choice!], sqft!, kwp, panels)}</p>;
   } else if (active != null && active >= panels) {
     info = <p>{L.ghost(each.extra)}</p>;
   } else if (active != null) {
@@ -258,7 +261,7 @@ export function Roof3D(props: Props) {
               <div key={w.row} className="roof3d-wire" style={{ left: px(w.x), top: px(w.y), width: px(trunkX - w.x), height: 3 }} />
             ))}
             <div className="roof3d-wire trunk" style={{ left: px(trunkX), top: px(trunkTop), width: 3, height: px(invY - trunkTop) }} />
-            <div className="roof3d-inverter" style={{ left: px(trunkX - 0.32), top: px(invY - 0.32), width: px(0.64), height: px(0.64) }}>⚡</div>
+            <div className="roof3d-inverter" style={{ left: px(trunkX - 0.32), top: px(invY - 0.32), width: px(0.64), height: px(0.64) }}><Lightning weight="fill" aria-hidden="true" /></div>
 
             {cells.map((c, i) => {
               const pos = { left: px(c.x), top: px(c.y), width: px(PANEL_W), height: px(PANEL_D) };

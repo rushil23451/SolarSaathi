@@ -57,7 +57,9 @@ Model IDs (pass one as `MODEL_ID` locally, or `ModelId` when deploying):
 
 | Model | ID to use from Mumbai |
 | --- | --- |
-| Amazon Nova 2 Lite (default, cheapest) | `global.amazon.nova-2-lite-v1:0` |
+| Kimi K2.5 (default: best on our bill tests, 20/20) | `moonshotai.kimi-k2.5` |
+| Qwen3-VL 235B (19/20) | `qwen.qwen3-vl-235b-a22b` |
+| Amazon Nova 2 Lite (automatic fallback, 18/20) | `global.amazon.nova-2-lite-v1:0` |
 | Amazon Nova Pro | `apac.amazon.nova-pro-v1:0` |
 | Claude Opus 5.5 (Paid plan) | `anthropic.claude-opus-5-5` |
 | Claude Haiku 5.5 (Paid plan) | `anthropic.claude-haiku-5-5` |

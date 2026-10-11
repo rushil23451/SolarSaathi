@@ -101,7 +101,14 @@ export function Check() {
       sanctioned_load_kw: n(v.load),
       units_billed: n(v.units),
       billing_period_days: n(v.days),
-      history: hist.map((u, i) => ({ units: u, days: sameRows ? oldRows[i].days : 30, period_end: sameRows ? oldRows[i].period_end : null })),
+      // Keep each row's dates when the rows are unchanged in number: the calculation uses them to
+      // place the use in the right months (summer vs winter).
+      history: hist.map((u, i) => ({
+        units: u,
+        days: sameRows ? oldRows[i].days : 30,
+        period_start: sameRows ? oldRows[i].period_start ?? null : null,
+        period_end: sameRows ? oldRows[i].period_end ?? null : null,
+      })),
       warnings: billRead?.warnings ?? [],
     };
     const edited = (Object.keys(FIELD) as (keyof Values)[]).filter((k) => status(k) === "edited").map((k) => FIELD[k]);

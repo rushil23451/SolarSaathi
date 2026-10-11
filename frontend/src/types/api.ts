@@ -29,6 +29,7 @@ export type BillWarning =
 export interface HistoryRow {
   units: number;
   days: number;
+  period_start?: string | null;
   period_end?: string | null;
 }
 
@@ -43,6 +44,8 @@ export interface Bill {
   amount_payable_inr?: number | null;
   bill_month?: string | null;
   notes?: string | null;
+  period_start?: string | null; // this bill's own period, from the meter reading dates
+  period_end?: string | null;
   warnings: BillWarning[];
 }
 
@@ -64,6 +67,7 @@ export interface MonthRow {
   grid: number;
   now: number;
   with_solar: number;
+  from_bills?: boolean; // false: the bills don't cover this month, so it uses the average
 }
 
 export interface YearPoint {

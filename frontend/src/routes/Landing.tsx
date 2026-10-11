@@ -33,7 +33,7 @@ export function Landing() {
           )}
         </div>
         <div className="col-span-5">
-          <Meter value={367} digits={5} unit={L.meterUnit} caption={L.example} label={`367 ${L.meterUnit}. ${L.example}`} className="rotate-[1.5deg]" />
+          <Meter value={361} digits={5} unit={L.meterUnit} caption={L.example} label={`361 ${L.meterUnit}. ${L.example}`} className="rotate-[1.5deg]" />
         </div>
       </section>
 

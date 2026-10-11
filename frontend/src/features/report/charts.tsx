@@ -12,9 +12,8 @@ export const MONTHS = {
 };
 
 function niceMax(v: number) {
-  const step = 10 ** Math.floor(Math.log10(v || 1));
-  const n = v / step;
-  return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * step;
+  const step = 10 ** Math.floor(Math.log10(v || 1)); // 608 -> 100s -> 700, not 1,000
+  return Math.ceil(v / step) * step;
 }
 
 export function TableToggle({ children }: { children: ReactNode }) {
@@ -56,7 +55,9 @@ export function MonthStrip({ months, limit }: { months: MonthRow[]; limit: numbe
   const band = (W - L - R) / 12;
   const bw = band * 0.6;
   const names = MONTHS[lang];
-  const tip = (m: MonthRow) => b.monthTip(names[m.month - 1], m.use, Math.min(m.solar, m.use), m.grid, inr(m.with_solar));
+  const tip = (m: MonthRow) =>
+    b.monthTip(names[m.month - 1], m.use, Math.min(m.solar, m.use), m.grid, inr(m.with_solar)) + (m.from_bills === false ? ` ${b.averageMonth}` : "");
+  const someAverage = months.some((m) => m.from_bills === false) && months.some((m) => m.from_bills);
 
   return (
     <figure className="flex flex-col gap-3">
@@ -93,7 +94,9 @@ export function MonthStrip({ months, limit }: { months: MonthRow[]; limit: numbe
               <rect className="hit" x={L + i * band + 1} y={T} width={band - 2} height={H - T - B} fill="transparent" stroke="transparent" strokeWidth={2} rx={4} />
               {m.grid > 0 && <rect x={x} y={gTop} width={bw} height={y(0) - gTop} fill="var(--color-grid)" rx={solar > 0 ? 0 : 3} />}
               {solar > 0 && <path d={roundTop(x, sTop, bw, gTop - sTop - gap, 3)} fill="var(--color-solar)" />}
-              <text x={x + bw / 2} y={H - 8} textAnchor="middle" className="fill-muted text-[11px]">{names[i]}</text>
+              <text x={x + bw / 2} y={H - 8} textAnchor="middle" className={`text-[11px] ${m.from_bills === false && someAverage ? "fill-muted/60 italic" : "fill-muted"}`}>
+                {names[i]}{m.from_bills === false && someAverage ? "*" : ""}
+              </text>
             </g>
           );
         })}
@@ -106,7 +109,7 @@ export function MonthStrip({ months, limit }: { months: MonthRow[]; limit: numbe
           </g>
         )}
       </svg>
-      <figcaption className="type-small text-muted">{b.monthsNote(limit)}</figcaption>
+      <figcaption className="type-small text-muted">{b.monthsNote(limit)}{someAverage ? ` ${b.averageNote}` : ""}</figcaption>
       <TableToggle>
         <table className="w-full type-small nums">
           <thead><tr className="text-left text-muted">{b.tableHead.map((h) => <th key={h} className="py-1 pr-3 font-medium">{h}</th>)}</tr></thead>

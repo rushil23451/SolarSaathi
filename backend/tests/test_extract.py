@@ -20,7 +20,7 @@ def test_normalize_bill_rejects_non_bills():
 
 def test_history_rows_without_units_are_dropped():
     bill = extract.normalize_bill({"units_billed": 500, "history": [{"units": None}, {"units": 300, "days": 31}]})
-    assert bill["history"] == [{"units": 300, "days": 31, "period_end": None}]
+    assert bill["history"] == [{"units": 300, "days": 31, "period_start": None, "period_end": None}]
 
 
 def test_parse_json_ignores_surrounding_text():
@@ -53,3 +53,54 @@ def test_misread_readings_do_not_overrule_printed_units():
     bill = extract.normalize_bill(raw)
     assert bill["units_billed"] == 163
     assert "units_mismatch" in bill["warnings"]
+
+
+def test_units_and_days_fall_back_to_the_kwh_row():
+    raw = {"meter": {"current_reading": 52146, "previous_reading": 51583, "days": 30, "units": 563}, "history": []}
+    bill = extract.normalize_bill(raw)
+    assert bill["units_billed"] == 563 and bill["billing_period_days"] == 30
+
+
+def test_history_days_come_from_the_period_dates_when_misread():
+    raw = {"units_billed": 563, "billing_period_days": 30, "history": [
+        {"period_start": "2024-11-25", "period_end": "2024-12-28", "days": 3, "units": 329, "bill_amount": 1200}]}
+    assert extract.normalize_bill(raw)["history"][0]["days"] == 34  # both ends counted, as on the bill
+
+
+def test_bill_amount_copied_into_units_is_dropped():
+    raw = {"units_billed": 563, "billing_period_days": 30, "history": [
+        {"units": 850, "bill_amount": 850, "days": 30}, {"units": 292, "bill_amount": 850, "days": 30}]}
+    assert [h["units"] for h in extract.normalize_bill(raw)["history"]] == [292]
+
+
+def test_billed_total_units_win_over_the_kwh_row():
+    raw = {"units_billed": 1156, "billing_total_units": 1220, "billing_period_days": 91,
+           "meter": {"current_reading": 2040, "previous_reading": 884}}
+    bill = extract.normalize_bill(raw)
+    assert bill["units_billed"] == 1220 and "units_mismatch" not in bill["warnings"]
+
+
+def test_small_meter_readings_are_not_mistaken_for_a_copied_reading():
+    # kVAh-billed shop: kWh readings 2040 - 884 = 1156, but the bill charges 1220 kVAh.
+    raw = {"units_billed": 1220, "billing_total_units": 1220, "meter": {"current_reading": 2040, "previous_reading": 884}}
+    assert extract.normalize_bill(raw)["units_billed"] == 1220
+
+
+def test_falls_back_to_the_second_model_when_the_first_is_throttled(monkeypatch):
+    from botocore.exceptions import ClientError
+    from solarsaathi import config
+
+    calls = []
+
+    class Runtime:
+        def converse(self, modelId, **kw):
+            calls.append(modelId)
+            if modelId == "primary":
+                raise ClientError({"Error": {"Code": "ThrottlingException", "Message": "Too many tokens per day"}}, "Converse")
+            return {"output": {"message": {"role": "assistant", "content": [{"text": '{"ok": true}'}]}}, "stopReason": "end_turn"}
+
+    monkeypatch.setattr(config, "MODEL_ID", "primary")
+    monkeypatch.setattr(config, "FALLBACK_MODEL_ID", "backup")
+    monkeypatch.setattr(llm, "_bedrock_runtime", lambda: Runtime())
+    assert llm.read_to_json(b"x", "image/jpeg", "s", "i", images=[b"jpeg"]) == {"ok": True}
+    assert calls == ["primary", "backup"]

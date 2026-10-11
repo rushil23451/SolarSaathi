@@ -124,7 +124,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
 
     # Step 5: month by month, because sunlight changes through the year and slab tariffs (and
     # Delhi's free-200-units rule) depend on each month's units. Surplus export is ignored.
-    months = month_by_month(kw, monthly_units, ghi, load_kw, category, tariff_id)
+    months = month_by_month(kw, monthly_units, ghi, load_kw, category, tariff_id, seasonal_use(bill, monthly_units))
     annual_saving = sum(m["saving"] for m in months)
     monthly_saving = annual_saving / 12
     solar_units_year = sum(m["solar"] for m in months)
@@ -202,7 +202,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
         "lifetime_savings": flow["net_25"],
         "lifetime": flow,
         "scenarios": scenarios,
-        "months": [{k: m[k] for k in ("month", "use", "solar", "grid", "now", "with_solar")} for m in months],
+        "months": [{k: m[k] for k in ("month", "use", "solar", "grid", "now", "with_solar", "from_bills")} for m in months],
         "loan": {"amount": round(net_cost), "rate_pct": loan["rate_pct"], "years": loan["years"],
                  "emi": round(emi), "net_monthly": round(monthly_saving - emi)},
         "co2_tonnes_year": round(co2_t, 1),
@@ -219,20 +219,52 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
 MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 
-def month_by_month(kw: float, monthly_units: float, ghi: dict, load_kw: float, category: str, tariff_id: str) -> list[dict]:
-    """Use is spread evenly (a bill rarely shows a full year); solar follows each month's sunlight."""
+def seasonal_use(bill: dict, monthly_units: float) -> list[tuple[float, bool]]:
+    """Units per day for each calendar month, and whether it comes from the person's own bills.
+
+    Every billing period with dates (this bill and the history rows) spreads its units evenly over
+    its days; a month covered by at least a week of those days gets its real daily rate. Months the
+    bills don't cover fall back to the overall average. So winter and summer differ when the bills
+    show it, instead of every month being the same.
+    """
+    from datetime import date, timedelta
+
+    periods = [(bill.get("period_start"), bill.get("period_end"), bill.get("units_billed"))]
+    periods += [(h.get("period_start"), h.get("period_end"), h.get("units")) for h in bill.get("history") or []]
+    units_by_month, days_by_month = [0.0] * 12, [0] * 12
+    for start, end, units in periods:
+        try:
+            d0, d1 = date.fromisoformat(str(start)), date.fromisoformat(str(end))
+        except ValueError:
+            continue
+        n = (d1 - d0).days + 1
+        if not units or not 1 <= n <= 120:
+            continue
+        for k in range(n):
+            m = (d0 + timedelta(days=k)).month - 1
+            units_by_month[m] += units / n
+            days_by_month[m] += 1
+    average = monthly_units * 12 / 365
+    return [(units_by_month[m] / days_by_month[m], True) if days_by_month[m] >= 7 else (average, False) for m in range(12)]
+
+
+def month_by_month(kw: float, monthly_units: float, ghi: dict, load_kw: float, category: str, tariff_id: str,
+                   use_per_day: list[tuple[float, bool]] | None = None) -> list[dict]:
+    """Solar follows each month's sunlight (NASA monthly averages); use follows the person's own
+    bills where they cover that month, otherwise their average."""
     pr = config.solar()["performance_ratio"]
     sun = ghi.get("monthly") or [ghi["ghi"]] * 12
+    rates = use_per_day or [(monthly_units * 12 / 365, False)] * 12
     out = []
     for i, days in enumerate(MONTH_DAYS):
-        use = monthly_units * days * 12 / 365  # so the 12 months average exactly to monthly_units
+        use = rates[i][0] * days
         solar = kw * sun[i] * days * pr
         grid = max(0.0, use - solar)
         now = tariff.monthly_bill(use, load_kw, category, tariff_id)
         with_solar = tariff.monthly_bill(grid, load_kw, category, tariff_id)
         out.append({"month": i + 1, "use": round(use), "solar": round(solar), "grid": round(grid),
                     "now": round(now["payable"]), "with_solar": round(with_solar["payable"]),
-                    "bill_now": now, "bill_solar": with_solar,
+                    "from_bills": rates[i][1], "bill_now": now, "bill_solar": with_solar,
                     "saving": max(0.0, now["payable"] - with_solar["payable"])})
     return out
 

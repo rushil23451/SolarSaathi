@@ -9,10 +9,46 @@
       "billing_period_days": 30,
       "units_billed": 563,
       "history": [
-        {"units": 400, "days": 30}, {"units": 292, "days": 30}, {"units": 359, "days": 31},
-        {"units": 370, "days": 27}, {"units": 329, "days": 30}, {"units": 223, "days": 30}
+        {
+          "units": 400,
+          "days": 30,
+          "period_start": "2025-03-27",
+          "period_end": "2025-04-25"
+        },
+        {
+          "units": 292,
+          "days": 30,
+          "period_start": "2025-02-25",
+          "period_end": "2025-03-26"
+        },
+        {
+          "units": 359,
+          "days": 31,
+          "period_start": "2025-01-25",
+          "period_end": "2025-02-24"
+        },
+        {
+          "units": 370,
+          "days": 27,
+          "period_start": "2024-12-29",
+          "period_end": "2025-01-24"
+        },
+        {
+          "units": 329,
+          "days": 34,
+          "period_start": "2024-11-25",
+          "period_end": "2024-12-28"
+        },
+        {
+          "units": 223,
+          "days": 30,
+          "period_start": "2024-10-26",
+          "period_end": "2024-11-24"
+        }
       ],
-      "current_charges_inr": 3654.35
+      "current_charges_inr": 3654.35,
+      "period_start": "2025-04-25",
+      "period_end": "2025-05-25"
     },
     "expect": "solar pays off"
   },

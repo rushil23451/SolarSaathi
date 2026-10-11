@@ -271,6 +271,8 @@ export const en = {
         `In ${n} of 12 months, your grid use stays under Delhi’s free ${limit} units, so the bill is ₹0 in those months. In winter, with less sun, you pay for the extra units.`,
       whyNormal: (grid: number) => `You pay only for the ${num(grid)} units a month that solar doesn’t cover, at the cheaper lower slabs. The fixed charge stays.`,
       alreadyZero: (limit: number | null) => `Your bill is already ₹0${limit ? ` because you use less than Delhi’s free ${limit} units` : ""}, so solar has nothing left to save.`,
+      averageMonth: "(Your bills don’t cover this month, so it uses your average.)",
+      averageNote: "Months marked * aren’t covered by your bills, so they use your average.",
       fromRoof: "From your roof",
       fromGrid: "From the grid",
       savedLabel: "You save a month",
@@ -550,15 +552,15 @@ export const en = {
     note: "Free, no sign-up, about two minutes. Hindi and English.",
     lastReport: (date: string) => `Your last report, ${date}`,
     open: "Open it",
-    meterUnit: "units this month",
+    meterUnit: "units a month",
     example: "Example: a real Delhi bill, personal details removed",
     storyTitle: "What one bill can tell you",
     story: [
       {
-        title: "This home uses 367 units a month.",
-        body: "That is the average of seven bills from a BSES Rajdhani home in Delhi. Today it pays about ₹1,214 a month.",
-        meter: "367",
-        unit: "units this month",
+        title: "This home uses about 361 units a month.",
+        body: "That is the average of seven bills from a BSES Rajdhani home in Delhi, from about 236 units in November to 563 in May. Its bills average about ₹1,470 a month.",
+        meter: "361",
+        unit: "units a month",
       },
       {
         title: "2.5 kW of panels would make about 286 of them.",
@@ -567,9 +569,9 @@ export const en = {
         unit: "units from the roof",
       },
       {
-        title: "The 84 units left stay under Delhi’s free 200.",
-        body: "So the bill drops to ₹0. After the ₹69,000 subsidy the system costs about ₹81,000 and pays for itself in under 6 years.",
-        meter: "84",
+        title: "In 11 of 12 months, what’s left stays under Delhi’s free 200 units.",
+        body: "So the bill drops to ₹0 in those months. After the ₹69,000 subsidy the system costs about ₹81,000 and pays for itself in about 5 years.",
+        meter: "82",
         unit: "units from the grid",
       },
     ],
@@ -633,6 +635,8 @@ export const en = {
     summary: (panels: number, k: number, used: number, roof: number | null, free: number) =>
       `${panels} panels for your ${kw(k)} system, on about ${num(used)} sq ft of shadow-free roof` +
       (roof ? ` out of about ${num(roof)} sq ft${free > 0 ? `, with room for ${free} more` : ""}.` : "."),
+    previewLarge: (panels: number) =>
+      `A large roof (more than 300 sq ft) fits more than 3 kW. We size your system from your use, up to 10 kW; this example shows ${panels} panels on about 600 sq ft.`,
     tapHint: "Tap a panel to see what it makes.",
     panel: (i: number, n: number) => `Panel ${i} of ${n}`,
     power: "Peak power",

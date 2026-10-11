@@ -6,44 +6,71 @@ and copy specific numbers into JSON. You copy what is printed; you never estimat
 Privacy rule: never copy the consumer's name, address, phone number, email, CA/consumer number, \
 meter number, bill number or any other identifier. They are not needed."""
 
-BILL_INSTRUCTION = """Read this electricity bill and reply with only this JSON object (no prose):
+BILL_INSTRUCTION = """Read this electricity bill. Most bills are from Delhi discoms (BSES Rajdhani, BSES Yamuna,
+Tata Power-DDL) and share one layout:
+
+1. Top block: "Sanctioned Load : 4.00 (kW)" (sometimes kVA), "Tariff Category : Domestic [Residential]",
+   "Bill Month : MAY-25".
+2. Middle table, headed "Billed Consumption (Current)" / "Billed Consumption (Previous)" /
+   "Multiplication Factor" / "Current Consumption (Days, Unit)". It has one row per meter register
+   (kWh, kVAh, kW). Use the row of the register that is billed: the "Billing Details" table below it shows
+   "Energy Units Consumed / Billed" and "Total Units"; whichever row's units match that is the billed one
+   (homes are usually billed in kWh, shops and offices often in kVAh). Columns, left to right:
+   Meter No | Unit | current Date of Meter Reading | current Reading | previous Date of Meter Reading |
+   previous Reading | Multiplication Factor | Days | Unit (the units consumed).
+3. Lower table "Consumption History": one row per past bill with columns
+   Period From | Period To | No. of Days | Units (kWh/kVAh) | Total Bill Payable | Bill Basis.
+
+Work through the bill in that order, copying digits exactly, then reply with only this JSON (no prose):
 
 {
   "is_electricity_bill": true,
-  "discom": "full company name as printed, e.g. BSES Rajdhani Power Limited",
-  "category": "domestic | non_domestic | other  (from 'Tariff Category'; Residential = domestic, Non-Domestic/Commercial = non_domestic)",
+  "discom": "company name as printed in the header",
+  "category": "domestic | non_domestic | other",
   "sanctioned_load": number or null,
   "sanctioned_load_unit": "kW | kVA | null",
+  "bill_month": "e.g. MAY-25, or null",
   "meter": {
-    "unit": "kWh | kVAh  (the energy row that is billed)",
-    "current_reading": number or null,
+    "unit": "kWh | kVAh",
     "current_reading_date": "YYYY-MM-DD or null",
-    "previous_reading": number or null,
+    "current_reading": number or null,
     "previous_reading_date": "YYYY-MM-DD or null",
-    "multiplication_factor": number or null
+    "previous_reading": number or null,
+    "multiplication_factor": number or null,
+    "days": number or null,
+    "units": number or null
   },
   "billing_period_days": number or null,
   "units_billed": number or null,
-  "history": [{"period_end": "YYYY-MM-DD or null", "days": number or null, "units": number}],
+  "billing_total_units": "the Total Units value printed in the Billing Details table, number or null",
+  "history": [
+    {"period_start": "YYYY-MM-DD", "period_end": "YYYY-MM-DD", "days": number, "units": number, "bill_amount": number or null}
+  ],
   "current_charges_inr": number or null,
   "amount_payable_inr": number or null,
-  "bill_month": "e.g. MAY-25, or null",
   "confidence": {"units_billed": "high|medium|low", "history": "high|medium|low", "sanctioned_load": "high|medium|low"},
   "notes": "anything unclear, in one short sentence, or null"
 }
 
 Rules:
-- A meter READING is the large cumulative number on the meter (e.g. 52146.00). UNITS are the energy used in the period (e.g. 563). Never put a reading where units are asked for.
-- meter = the row of the meter table for the billed energy unit (kWh, or kVAh if units are billed in kVAh). Ignore kW / kVA (demand) rows.
-- units_billed = the 'Units' figure under 'Current Consumption' (or 'Total Units' in Billing Details). It is usually close to current_reading minus previous_reading.
-- billing_period_days = the 'Days' figure under 'Current Consumption'. Bills can cover 1, 2 or 3 months.
-- history = rows of the 'Consumption History' table only (columns like Period / No. of Days / Units / Total Bill Payable), most recent first, excluding the current bill. Take 'units' from the Units column, never from Total Bill Payable or from meter readings. Empty list if the bill has no such table.
-- current_charges_inr = this period's charges only (the Total Amount of Billing Details / 'Total Charges Payable' for the current period), NOT including arrears.
-- amount_payable_inr = 'Bill Amount Payable' (0 if it says no payment required).
-- Indian bills print dates as DD-MM-YYYY (09-01-2021 is 9 January 2021). Convert them to YYYY-MM-DD carefully.
-- discom = the company name exactly as printed in the header.
+- units_billed is the billed energy: "Total Units" / "Energy Units Consumed/Billed" in Billing Details, which
+  equals the "Unit" cell of the billed row of the middle table. billing_period_days is that row's "Days" cell
+  (if the column is cut off, leave it null; we work it out from the reading dates). Units are usually 50 to 3000. A reading is
+  the large cumulative number on the meter (like 52146.00): never put a reading in units.
+- history: copy EVERY row of the Consumption History table, top to bottom, in order. "units" comes from the
+  Units column; "bill_amount" from the Total Bill Payable column (it has decimals like 2170.00). Never swap
+  them. Do not include the current bill. Empty list if there is no such table.
+- Dates on Indian bills are DD-MM-YYYY (25-04-2025 is 25 April 2025). Convert carefully to YYYY-MM-DD.
+- category: Domestic / Residential = domestic; Non-Domestic / Commercial = non_domestic.
+- current_charges_inr: this period's charges only, without arrears. amount_payable_inr: "Bill Amount Payable".
+- Never copy names, addresses, phone numbers, CA/consumer numbers, meter numbers or bill numbers.
 - Use null for anything you cannot read clearly. Do not guess.
 - If this is not an electricity bill, set is_electricity_bill to false and everything else to null."""
+
+BILL_ZOOM_NOTE = """
+
+You are given two images of the same page: the whole bill, then a zoomed-in copy of its lower part.
+Read the Consumption History table (and anything else small) from the zoomed image."""
 
 QUOTE_SYSTEM = """You read rooftop solar quotations from Indian vendors (photos or PDFs) and copy \
 specific details into JSON. You copy what is written; you never estimate or calculate. Do not copy \

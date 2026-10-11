@@ -24,7 +24,7 @@ STACK="solarsaathi"
 API_PORT=8787
 WEB_PORT=5173
 PY="$ROOT/.venv/bin/python"
-TEST_MODEL="global.amazon.nova-2-lite-v1:0"
+TEST_MODEL="moonshotai.kimi-k2.5"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
