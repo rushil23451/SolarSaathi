@@ -4,9 +4,13 @@ The model can misread a photo. Everything here is a sanity check in plain code, 
 field still goes to the user's confirmation screen before any calculation runs.
 """
 
+import json
+import logging
 from datetime import date
 
-from . import llm, pages, prompts
+from . import config, llm, pages, prompts
+
+log = logging.getLogger(__name__)
 
 CATEGORIES = {"domestic", "non_domestic", "other"}
 QUOTE_ITEMS = {"mounting_structure", "dc_ac_cabling", "earthing", "lightning_arrester", "net_meter_process", "installation"}
@@ -179,9 +183,102 @@ def normalize_quote(raw: dict) -> dict:
 
 
 def read_bill(data: bytes, media_type: str) -> dict:
+    """Read a bill with the main model, have a second model check that reading against the same
+    images, settle any disagreement with evidence printed on the bill, and flag what can't be settled."""
     images = pages.bill_images(data, media_type)
-    instruction = prompts.BILL_INSTRUCTION + (prompts.BILL_ZOOM_NOTE if images else "")
-    return normalize_bill(llm.read_to_json(data, media_type, prompts.BILL_SYSTEM, instruction, images))
+    zoom = prompts.BILL_ZOOM_NOTE if images else ""
+    first = llm.read_to_json(data, media_type, prompts.BILL_SYSTEM, prompts.BILL_INSTRUCTION + zoom, images)
+    second = None
+    if config.VERIFY_MODEL_ID and first.get("is_electricity_bill") is not False:
+        try:
+            second = llm.read_to_json(data, media_type, prompts.BILL_SYSTEM,
+                                      prompts.BILL_VERIFY_INSTRUCTION + json.dumps(first, ensure_ascii=False) + zoom,
+                                      images, model=config.VERIFY_MODEL_ID)
+        except Exception:  # the check is a bonus; never fail the upload because of it
+            log.exception("second reading failed; using the first reading alone")
+    merged, disagreements = reconcile(first, second)
+    bill = normalize_bill(merged)
+    bill["cross_check"] = disagreements
+    bill["checked_by_two_readers"] = second is not None
+    return bill
+
+
+def _close(a, b, tol=0.01) -> bool:
+    return a is not None and b is not None and abs(a - b) <= max(0.5, tol * abs(b))
+
+
+def _evidence_units(raw: dict) -> list[float]:
+    """Numbers printed elsewhere on the bill that the billed units must agree with."""
+    meter = raw.get("meter") or {}
+    out = [_num(raw.get("billing_total_units"), 1, 100000), _units_from_readings(meter), _num(meter.get("units"), 1, 100000)]
+    return [x for x in out if x is not None]
+
+
+def _evidence_days(raw: dict) -> list[float]:
+    meter = raw.get("meter") or {}
+    span = _days_between(meter.get("previous_reading_date"), meter.get("current_reading_date"))
+    return [span, span + 1] if span else []
+
+
+def _agreed(e1: list[float], e2: list[float]) -> list[float]:
+    """Evidence both readers saw the same way. A number only one reader saw can't settle a dispute:
+    a misread reading would otherwise "support" that reader's own misread units."""
+    return [x for x in e1 if any(_close(x, y) for y in e2)]
+
+
+def _pick(a, b, evidence: list[float]):
+    """The candidate more of the bill's own printed numbers agree with; None if it's a tie."""
+    sa = sum(_close(a, x) for x in evidence)
+    sb = sum(_close(b, x) for x in evidence)
+    return a if sa > sb else b if sb > sa else None
+
+
+def reconcile(first: dict, second: dict | None) -> tuple[dict, dict]:
+    """Merge two readings of the same bill. Agreement: keep. Disagreement: pick the value the bill's
+    own numbers support (meter readings, Total Units, period dates). Otherwise keep the first reading
+    and report both values so the person checks that field."""
+    if not second:
+        return first, {}
+    merged = json.loads(json.dumps(first))
+    issues: dict = {}
+
+    u1 = _num(first.get("billing_total_units"), 1, 100000) or _num(first.get("units_billed"), 0, 100000)
+    u2 = _num(second.get("billing_total_units"), 1, 100000) or _num(second.get("units_billed"), 0, 100000)
+    if u1 is not None and u2 is not None and not _close(u1, u2, 0):
+        best = _pick(u1, u2, _agreed(_evidence_units(first), _evidence_units(second)))
+        if best == u2:
+            merged["units_billed"] = u2
+            merged["billing_total_units"] = second.get("billing_total_units")
+            merged["meter"] = second.get("meter") or merged.get("meter")
+        elif best is None:
+            issues["units_billed"] = {"first": u1, "second": u2}
+    elif u1 is None and u2 is not None:
+        merged["units_billed"], merged["billing_total_units"] = second.get("units_billed"), second.get("billing_total_units")
+
+    d1, d2 = _num(first.get("billing_period_days"), 1, 400), _num(second.get("billing_period_days"), 1, 400)
+    if d1 is not None and d2 is not None and d1 != d2:
+        best = _pick(d1, d2, _agreed(_evidence_days(first), _evidence_days(second)))
+        if best == d2:
+            merged["billing_period_days"] = d2
+        elif best is None:
+            issues["billing_period_days"] = {"first": d1, "second": d2}
+    elif d1 is None and d2 is not None:
+        merged["billing_period_days"] = d2
+
+    l1, l2 = _num(first.get("sanctioned_load"), 0.1, 500), _num(second.get("sanctioned_load"), 0.1, 500)
+    if l1 is not None and l2 is not None and l1 != l2:
+        issues["sanctioned_load_kw"] = {"first": l1, "second": l2}
+    elif l1 is None and l2 is not None:
+        merged["sanctioned_load"], merged["sanctioned_load_unit"] = l2, second.get("sanctioned_load_unit")
+
+    if first.get("category") and second.get("category") and first["category"] != second["category"]:
+        issues["category"] = {"first": first["category"], "second": second["category"]}
+
+    h1 = [_num(r.get("units")) for r in first.get("history") or [] if isinstance(r, dict)]
+    h2 = [_num(r.get("units")) for r in second.get("history") or [] if isinstance(r, dict)]
+    if h1 != h2 and (h1 or h2):
+        issues["history"] = {"first": h1, "second": h2}  # never adopt rows only one reader saw
+    return merged, issues
 
 
 def read_quote(data: bytes, media_type: str) -> dict:

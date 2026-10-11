@@ -44,6 +44,9 @@ export interface Bill {
   amount_payable_inr?: number | null;
   bill_month?: string | null;
   notes?: string | null;
+  // Fields where a second AI reading disagreed and the bill itself couldn't settle it.
+  cross_check?: Partial<Record<"units_billed" | "billing_period_days" | "sanctioned_load_kw" | "category" | "history", { first: unknown; second: unknown }>>;
+  checked_by_two_readers?: boolean;
   period_start?: string | null; // this bill's own period, from the meter reading dates
   period_end?: string | null;
   warnings: BillWarning[];
@@ -62,6 +65,7 @@ export interface BillBreakdown {
 
 export interface MonthRow {
   month: number; // 1-12
+  sun?: number; // NASA long-term average sunlight for this month at the home, kWh/m²/day
   use: number;
   solar: number;
   grid: number;
@@ -103,7 +107,7 @@ export type Reason =
   | "load_limit"
   | "too_small";
 
-export type Flag = "single_month" | "load_increase" | "not_eligible_central_subsidy" | "state_subsidy_now";
+export type Flag = "single_month" | "load_increase" | "not_eligible_central_subsidy" | "state_subsidy_now" | "check_state_subsidy";
 
 export interface Analysis {
   verdict: Verdict;
@@ -116,6 +120,7 @@ export interface Analysis {
   ghi?: number;
   ghi_source?: string;
   bill_now?: BillBreakdown;
+  bill_check?: { units: number; days: number; ours_gross: number; ours_payable: number; printed: number | null; diff_pct: number | null } | null;
   flags?: Flag[];
   working?: { key: string; value: string; note: string }[];
   system_kw?: number;

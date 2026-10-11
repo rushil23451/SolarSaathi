@@ -104,3 +104,48 @@ def test_falls_back_to_the_second_model_when_the_first_is_throttled(monkeypatch)
     monkeypatch.setattr(llm, "_bedrock_runtime", lambda: Runtime())
     assert llm.read_to_json(b"x", "image/jpeg", "s", "i", images=[b"jpeg"]) == {"ok": True}
     assert calls == ["primary", "backup"]
+
+
+METER = {"current_reading": 52146, "previous_reading": 51583, "multiplication_factor": 1,
+         "current_reading_date": "2025-05-25", "previous_reading_date": "2025-04-25"}
+
+
+def test_reconcile_picks_the_value_the_meter_readings_support():
+    first = {"units_billed": 653, "billing_period_days": 30, "meter": METER, "history": []}
+    second = {"units_billed": 563, "billing_period_days": 30, "meter": METER, "history": []}
+    merged, issues = extract.reconcile(first, second)
+    assert merged["units_billed"] == 563 and issues == {}
+
+
+def test_reconcile_flags_what_the_bill_cannot_settle():
+    first = {"units_billed": 563, "sanctioned_load": 4, "history": [{"units": 400}, {"units": 292}]}
+    second = {"units_billed": 563, "sanctioned_load": 7, "history": [{"units": 400}, {"units": 252}]}
+    merged, issues = extract.reconcile(first, second)
+    assert merged["sanctioned_load"] == 4  # the first reading is kept...
+    assert issues["sanctioned_load_kw"] == {"first": 4, "second": 7}  # ...and the person is asked to check
+    assert issues["history"]["second"] == [400, 252]
+
+
+def test_reconcile_days_follow_the_reading_dates():
+    first = {"units_billed": 563, "billing_period_days": 36, "meter": METER}
+    second = {"units_billed": 563, "billing_period_days": 30, "meter": METER}
+    merged, issues = extract.reconcile(first, second)
+    assert merged["billing_period_days"] == 30 and "billing_period_days" not in issues
+
+
+def test_without_a_second_reading_nothing_changes():
+    first = {"units_billed": 563}
+    assert extract.reconcile(first, None) == (first, {})
+
+
+def test_evidence_only_one_reader_saw_settles_nothing():
+    # The second reader misread a meter reading (14410 instead of 14420), which "supports" its own 153.
+    first = {"units_billed": 163, "meter": {"current_reading": 14420, "previous_reading": 14257}}
+    second = {"units_billed": 153, "meter": {"current_reading": 14410, "previous_reading": 14257}}
+    merged, issues = extract.reconcile(first, second)
+    assert merged["units_billed"] == 163 and issues["units_billed"] == {"first": 163, "second": 153}
+
+
+def test_history_only_the_second_reader_saw_is_flagged_not_adopted():
+    merged, issues = extract.reconcile({"units_billed": 1220, "history": []}, {"units_billed": 1220, "history": [{"units": 2159}]})
+    assert merged["history"] == [] and issues["history"] == {"first": [], "second": [2159]}

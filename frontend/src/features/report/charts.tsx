@@ -56,7 +56,8 @@ export function MonthStrip({ months, limit }: { months: MonthRow[]; limit: numbe
   const bw = band * 0.6;
   const names = MONTHS[lang];
   const tip = (m: MonthRow) =>
-    b.monthTip(names[m.month - 1], m.use, Math.min(m.solar, m.use), m.grid, inr(m.with_solar)) + (m.from_bills === false ? ` ${b.averageMonth}` : "");
+    b.monthTip(names[m.month - 1], m.use, Math.min(m.solar, m.use), m.grid, inr(m.with_solar)) +
+    (m.sun != null ? ` ${b.sunTip(m.sun)}` : "") + (m.from_bills === false ? ` ${b.averageMonth}` : "");
   const someAverage = months.some((m) => m.from_bills === false) && months.some((m) => m.from_bills);
 
   return (
@@ -116,7 +117,8 @@ export function MonthStrip({ months, limit }: { months: MonthRow[]; limit: numbe
           <tbody>
             {months.map((m) => (
               <tr key={m.month} className="border-t border-line">
-                <th className="py-1 pr-3 text-left font-medium">{names[m.month - 1]}</th>
+                <th className="py-1 pr-3 text-left font-medium">{names[m.month - 1]}{m.from_bills === false && someAverage ? "*" : ""}</th>
+                <td className="pr-3">{m.sun != null ? num(m.sun, 2) : "—"}</td>
                 <td className="pr-3">{num(m.use)}</td><td className="pr-3">{num(Math.min(m.solar, m.use))}</td><td className="pr-3">{num(m.grid)}</td><td>{inr(m.with_solar)}</td>
               </tr>
             ))}

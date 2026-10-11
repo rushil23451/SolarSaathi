@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
-import { Info, WarningCircle } from "@phosphor-icons/react";
+import { CheckCircle, Info, WarningCircle } from "@phosphor-icons/react";
 import { useT } from "../i18n";
 import { useFlow, type BillField } from "../app/flow";
 import type { Bill, BillWarning, Category } from "../types/api";
@@ -72,12 +72,17 @@ export function Check() {
     discom: "discom", category: "category", load: "sanctioned_load_kw", units: "units_billed", days: "billing_period_days", history: "history",
   };
   const warningsFor = (k: keyof Values) => (billRead?.warnings ?? []).filter((w) => WARN_FIELD[w] === FIELD[k]);
+  const crossFor = (k: keyof Values) =>
+    k === "discom" ? undefined : billRead?.cross_check?.[FIELD[k] as keyof NonNullable<Bill["cross_check"]>];
+  const showValue = (k: keyof Values, value: unknown) =>
+    Array.isArray(value) ? (value.length ? value.join(", ") : t.check.none)
+      : k === "category" ? t.check.categories[value as Category] ?? String(value) : String(value);
 
   function status(k: keyof Values): FieldStatus {
     if (manual || noSource) return "typed";
     if (v[k].toString().trim() !== original[k].toString().trim()) return "edited";
     if (!original[k].toString().trim()) return "missing";
-    if (warningsFor(k).some((w) => !INFO_ONLY.includes(w))) return "check";
+    if (warningsFor(k).some((w) => !INFO_ONLY.includes(w)) || crossFor(k)) return "check";
     return "from_bill";
   }
 
@@ -118,9 +123,16 @@ export function Check() {
 
   const note = (k: keyof Values) => {
     const ws = warningsFor(k);
-    if (manual || !ws.length) return null;
+    const cross = crossFor(k);
+    if (manual || (!ws.length && !cross)) return null;
     return (
       <ul className="flex flex-col gap-1">
+        {cross && (
+          <li className="flex items-start gap-1.5 type-small text-warn">
+            <WarningCircle weight="bold" className="mt-1 shrink-0" aria-hidden="true" />
+            {t.check.secondReader(showValue(k, cross.second))}
+          </li>
+        )}
         {ws.map((w) => (
           <li key={w} className={`flex items-start gap-1.5 type-small ${INFO_ONLY.includes(w) ? "text-muted" : "text-warn"}`}>
             {INFO_ONLY.includes(w) ? <Info className="mt-1 shrink-0" aria-hidden="true" /> : <WarningCircle weight="bold" className="mt-1 shrink-0" aria-hidden="true" />}
@@ -221,6 +233,9 @@ export function Check() {
           <div>
             <h1 tabIndex={-1} className="type-h1 focus:outline-none">{manual || noSource ? t.check.manualTitle : t.check.title}</h1>
             <p className="mt-4 max-w-[60ch] type-prose text-ink-2">{manual || noSource ? t.check.manualLead : t.check.lead}</p>
+            {!manual && billRead?.checked_by_two_readers && (
+              <p className="mt-3 flex items-center gap-2 type-small text-good"><CheckCircle weight="fill" aria-hidden="true" /> {t.check.twoReaders}</p>
+            )}
           </div>
           {form}
         </div>

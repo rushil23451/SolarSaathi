@@ -148,6 +148,17 @@ function ReportBody({ r, id, owner }: { r: Analysis; id: string; owner: boolean 
                         : R.bill.whyNormal(r.grid_units_month!)}
                 </p>
                 <BillSlips r={r} />
+                {r.bill_check?.printed && (
+                  <p className="flex items-start gap-2 rounded-[var(--radius-input)] bg-good-soft px-4 py-3 text-ink-2">
+                    <CheckCircle weight="fill" className="mt-1 shrink-0 text-good" aria-hidden="true" />
+                    <span>{R.bill.checkLine(r.bill_check.units, r.bill_check.days, r.bill_check.printed, r.bill_check.ours_gross, r.bill_check.diff_pct ?? 0)}</span>
+                  </p>
+                )}
+                {r.flags?.includes("check_state_subsidy") && (
+                  <p className="flex items-start gap-2 rounded-[var(--radius-input)] bg-warn-soft px-4 py-3 text-warn">
+                    <Info className="mt-1 shrink-0" aria-hidden="true" /> <span>{R.bill.stateDisclaimer}</span>
+                  </p>
+                )}
                 <div>
                   <h3 className="type-h3">{R.bill.monthsTitle}</h3>
                   <div className="mt-4"><MonthStrip months={r.months!} limit={r.free_units_limit ?? null} /></div>

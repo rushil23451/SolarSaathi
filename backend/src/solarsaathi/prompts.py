@@ -72,6 +72,15 @@ BILL_ZOOM_NOTE = """
 You are given two images of the same page: the whole bill, then a zoomed-in copy of its lower part.
 Read the Consumption History table (and anything else small) from the zoomed image."""
 
+BILL_VERIFY_INSTRUCTION = """Another reader extracted the JSON below from this electricity bill. Check every value against
+the images, digit by digit: the sanctioned load, the billed row of the meter table (dates, readings, days, units),
+Total Units in Billing Details, and every row of the Consumption History table (dates, days, units, bill amount).
+Correct anything that is wrong, fill in anything missing that you can read clearly, and set anything you cannot
+read to null. Reply with only the corrected JSON, with exactly the same keys.
+
+The other reader's JSON:
+"""
+
 QUOTE_SYSTEM = """You read rooftop solar quotations from Indian vendors (photos or PDFs) and copy \
 specific details into JSON. You copy what is written; you never estimate or calculate. Do not copy \
 any customer's personal details."""

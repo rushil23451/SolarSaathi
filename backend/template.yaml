@@ -10,6 +10,10 @@ Parameters:
       Bedrock vision model that reads bills and quotes (Converse API). Kimi K2.5 scored best on our bill
       tests; qwen.qwen3-vl-235b-a22b and global.amazon.nova-2-lite-v1:0 also work. anthropic.* IDs use
       Claude in Amazon Bedrock and need a Paid plan account.
+  VerifyModelId:
+    Type: String
+    Default: qwen.qwen3-vl-235b-a22b
+    Description: Second model that checks the first reading of each bill against the same images. Empty to turn off.
   FallbackModelId:
     Type: String
     Default: global.amazon.nova-2-lite-v1:0
@@ -40,6 +44,7 @@ Globals:
       Variables:
         MODEL_ID: !Ref ModelId
         FALLBACK_MODEL_ID: !Ref FallbackModelId
+        VERIFY_MODEL_ID: !Ref VerifyModelId
         LLM_EFFORT: !Ref LlmEffort
         JOBS_TABLE: !Ref JobsTable
         ANALYSES_TABLE: !Ref AnalysesTable

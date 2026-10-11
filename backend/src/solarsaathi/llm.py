@@ -64,11 +64,13 @@ def _converse_file_block(data: bytes, media_type: str) -> dict:
     return {"document": {"format": "pdf", "name": "document", "source": {"bytes": data}}}
 
 
-def _read_converse(data: bytes, media_type: str, system: str, instruction: str, images: list[bytes] | None = None) -> dict:
+def _read_converse(data: bytes, media_type: str, system: str, instruction: str, images: list[bytes] | None = None,
+                   model: str | None = None) -> dict:
     files = ([{"image": {"format": "jpeg", "source": {"bytes": img}}} for img in images] if images
              else [_converse_file_block(data, media_type)])
     messages = [{"role": "user", "content": [*files, {"text": instruction}]}]
-    models = [config.MODEL_ID] + ([config.FALLBACK_MODEL_ID] if config.FALLBACK_MODEL_ID not in ("", config.MODEL_ID) else [])
+    first = model or config.MODEL_ID
+    models = [first] + ([config.FALLBACK_MODEL_ID] if config.FALLBACK_MODEL_ID not in ("", first) else [])
     for i, model in enumerate(models):
         try:
             return _converse_json(model, system, list(messages))
@@ -151,9 +153,11 @@ def _read_anthropic(data: bytes, media_type: str, system: str, instruction: str,
     raise ReadError("could not get valid JSON from the model")
 
 
-def read_to_json(data: bytes, media_type: str, system: str, instruction: str, images: list[bytes] | None = None) -> dict:
-    """Send the document (or prepared page images, if given) with the instruction; return the JSON reply."""
+def read_to_json(data: bytes, media_type: str, system: str, instruction: str, images: list[bytes] | None = None,
+                 model: str | None = None) -> dict:
+    """Send the document (or prepared page images, if given) with the instruction; return the JSON reply.
+    `model` overrides MODEL_ID for this call (used by the second, cross-checking reader)."""
     _check_type(media_type)
-    if config.is_anthropic_model():
+    if "anthropic." in (model or config.MODEL_ID):
         return _read_anthropic(data, media_type, system, instruction, images)
-    return _read_converse(data, media_type, system, instruction, images)
+    return _read_converse(data, media_type, system, instruction, images, model)

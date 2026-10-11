@@ -111,3 +111,24 @@ def test_months_follow_the_bills_where_they_cover_them(bills):
     assert rates[4][0] > rates[10][0]  # May (AC season) uses more per day than November
     r = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown")
     assert [m["from_bills"] for m in r["months"]].count(True) == 7
+
+
+def test_delhi_free_units_only_apply_to_homes_in_delhi(bills):
+    delhi = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown", 28.61, 77.21)
+    bengaluru = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown", 12.97, 77.59)
+    assert delhi["free_units_limit"] == 200 and "check_state_subsidy" not in delhi["flags"]
+    assert bengaluru["free_units_limit"] is None and "check_state_subsidy" in bengaluru["flags"]
+    assert all(m["state_subsidy"] == 0 for m in [bengaluru["bill_now"], bengaluru["bill_with_solar"]])
+
+
+def test_bill_check_reproduces_the_uploaded_bill(bills):
+    r = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown", 28.61, 77.21)
+    check = r["bill_check"]
+    assert check["units"] == 563 and check["printed"] == 3654
+    assert abs(check["diff_pct"]) < 3  # our tariff vs the printed current charges
+
+
+def test_uncovered_months_use_the_average_of_covered_months(bills):
+    rates = calc.seasonal_use(bills["brpl_domestic_may25"], 361)
+    covered = [r for r, from_bills in rates if from_bills]
+    assert all(abs(r - sum(covered) / len(covered)) < 1e-9 for r, from_bills in rates if not from_bills)

@@ -46,7 +46,31 @@ def _floor_to_step(value: float, step: float) -> float:
     return math.floor(value / step + 1e-9) * step
 
 
-def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
+def in_tariff_state(tariff_id: str, lat: float | None, lon: float | None) -> bool:
+    """Is the home inside the state whose government subsidy is in this tariff (e.g. Delhi)?
+    Unknown location (scripts, tests) counts as inside."""
+    bounds = config.tariffs()[tariff_id].get("state_bounds")
+    if lat is None or lon is None or not bounds:
+        return True
+    return bounds["lat"][0] <= lat <= bounds["lat"][1] and bounds["lon"][0] <= lon <= bounds["lon"][1]
+
+
+def bill_check(bill: dict, load_kw: float, category: str, tariff_id: str, state_applies: bool) -> dict | None:
+    """Our tariff applied to the uploaded bill's own units and days, next to what the bill printed,
+    so the person can see the calculation reproduces their real bill."""
+    units, days = bill.get("units_billed"), bill.get("billing_period_days") or 30
+    if not units:
+        return None
+    month = tariff.monthly_bill(units * 30 / days, load_kw, category, tariff_id, apply_state_subsidy=state_applies)
+    ours_gross = month["gross"] * days / 30
+    ours_payable = month["payable"] * days / 30
+    printed = bill.get("current_charges_inr")
+    return {"units": units, "days": days, "ours_gross": round(ours_gross), "ours_payable": round(ours_payable),
+            "printed": round(printed) if printed else None,
+            "diff_pct": round((ours_gross - printed) / printed * 100, 1) if printed else None}
+
+
+def analyse(bill: dict, ghi: dict, roof: str = "unknown", lat: float | None = None, lon: float | None = None) -> dict:
     s = config.solar()
     tariff_id = config.find_tariff_id(bill.get("discom"))
     if tariff_id is None:
@@ -56,6 +80,12 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
     load_kw = float(bill.get("sanctioned_load_kw") or 0)
     monthly_units, periods = average_monthly_units(bill)
     flags, working = [], []
+    # A state's own subsidy (Delhi's free 200 units) only applies to homes in that state. Elsewhere
+    # we don't assume one; the person is told to check their own state's scheme.
+    has_state_scheme = bool(config.tariffs()[tariff_id].get("state_subsidy"))
+    state_applies = has_state_scheme and in_tariff_state(tariff_id, lat, lon)
+    if has_state_scheme and not state_applies:
+        flags.append("check_state_subsidy")
 
     # Step 2: how much 1 kW of panels makes here
     yield_per_kw_year = ghi["ghi"] * 365 * s["performance_ratio"]
@@ -86,7 +116,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
                             f"limited by {limit_by.replace('_', ' ')}, rounded down to {s['size_step_kw']} kW"})
 
     # Step 5: bill now (needed even when we recommend nothing)
-    bill_now = tariff.monthly_bill(monthly_units, load_kw, category, tariff_id)
+    bill_now = tariff.monthly_bill(monthly_units, load_kw, category, tariff_id, apply_state_subsidy=state_applies)
     if bill_now["state_subsidy"] > 0:
         flags.append("state_subsidy_now")
     if category not in s["central_subsidy"]["categories"]:
@@ -100,6 +130,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
         "ghi": round(ghi["ghi"], 2),
         "ghi_source": ghi["source"],
         "bill_now": bill_now,
+        "bill_check": bill_check(bill, load_kw, category, tariff_id, state_applies),
         "flags": flags,
         "working": working,
     }
@@ -124,7 +155,8 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
 
     # Step 5: month by month, because sunlight changes through the year and slab tariffs (and
     # Delhi's free-200-units rule) depend on each month's units. Surplus export is ignored.
-    months = month_by_month(kw, monthly_units, ghi, load_kw, category, tariff_id, seasonal_use(bill, monthly_units))
+    months = month_by_month(kw, monthly_units, ghi, load_kw, category, tariff_id, seasonal_use(bill, monthly_units),
+                            apply_state_subsidy=state_applies)
     annual_saving = sum(m["saving"] for m in months)
     monthly_saving = annual_saving / 12
     solar_units_year = sum(m["solar"] for m in months)
@@ -135,7 +167,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
     bill_solar = average_bill([m["bill_solar"] for m in months])
     zero_bill_months = sum(1 for m in months if m["bill_solar"]["payable"] <= 0)
     state_rules = config.tariffs()[tariff_id].get("state_subsidy") or {}
-    free_limit = state_rules.get("free_up_to_units") if category in state_rules.get("categories", []) else None
+    free_limit = state_rules.get("free_up_to_units") if state_applies and category in state_rules.get("categories", []) else None
     working.append({"key": "bill_with_solar", "value": f"₹{bill_solar['payable']:,.0f}/month",
                     "note": f"average of 12 months; solar covers {coverage_pct:.0f}% of use; "
                             f"{grid_units_month:.0f} units/month still from the grid; export credit ignored"})
@@ -202,7 +234,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown") -> dict:
         "lifetime_savings": flow["net_25"],
         "lifetime": flow,
         "scenarios": scenarios,
-        "months": [{k: m[k] for k in ("month", "use", "solar", "grid", "now", "with_solar", "from_bills")} for m in months],
+        "months": [{k: m[k] for k in ("month", "sun", "use", "solar", "grid", "now", "with_solar", "from_bills")} for m in months],
         "loan": {"amount": round(net_cost), "rate_pct": loan["rate_pct"], "years": loan["years"],
                  "emi": round(emi), "net_monthly": round(monthly_saving - emi)},
         "co2_tonnes_year": round(co2_t, 1),
@@ -244,12 +276,15 @@ def seasonal_use(bill: dict, monthly_units: float) -> list[tuple[float, bool]]:
             m = (d0 + timedelta(days=k)).month - 1
             units_by_month[m] += units / n
             days_by_month[m] += 1
-    average = monthly_units * 12 / 365
+    covered = [units_by_month[m] / days_by_month[m] for m in range(12) if days_by_month[m] >= 7]
+    # Months the bills don't cover use the average of the months they do; with no dated periods
+    # at all, every month uses the bill's average.
+    average = sum(covered) / len(covered) if covered else monthly_units * 12 / 365
     return [(units_by_month[m] / days_by_month[m], True) if days_by_month[m] >= 7 else (average, False) for m in range(12)]
 
 
 def month_by_month(kw: float, monthly_units: float, ghi: dict, load_kw: float, category: str, tariff_id: str,
-                   use_per_day: list[tuple[float, bool]] | None = None) -> list[dict]:
+                   use_per_day: list[tuple[float, bool]] | None = None, apply_state_subsidy: bool = True) -> list[dict]:
     """Solar follows each month's sunlight (NASA monthly averages); use follows the person's own
     bills where they cover that month, otherwise their average."""
     pr = config.solar()["performance_ratio"]
@@ -260,9 +295,9 @@ def month_by_month(kw: float, monthly_units: float, ghi: dict, load_kw: float, c
         use = rates[i][0] * days
         solar = kw * sun[i] * days * pr
         grid = max(0.0, use - solar)
-        now = tariff.monthly_bill(use, load_kw, category, tariff_id)
-        with_solar = tariff.monthly_bill(grid, load_kw, category, tariff_id)
-        out.append({"month": i + 1, "use": round(use), "solar": round(solar), "grid": round(grid),
+        now = tariff.monthly_bill(use, load_kw, category, tariff_id, apply_state_subsidy=apply_state_subsidy)
+        with_solar = tariff.monthly_bill(grid, load_kw, category, tariff_id, apply_state_subsidy=apply_state_subsidy)
+        out.append({"month": i + 1, "sun": round(sun[i], 2), "use": round(use), "solar": round(solar), "grid": round(grid),
                     "now": round(now["payable"]), "with_solar": round(with_solar["payable"]),
                     "from_bills": rates[i][1], "bill_now": now, "bill_solar": with_solar,
                     "saving": max(0.0, now["payable"] - with_solar["payable"])})

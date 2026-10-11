@@ -38,9 +38,9 @@ export const en = {
     notConfigured: "The app isn’t connected to its server. Start it with ./run.sh local or ./run.sh mock.",
   },
   footer: {
-    privacy: "We delete bill and quote photos within 24 hours and never store names, addresses or account numbers.",
+    privacy: "Bill and quote photos are deleted automatically after about a day. We never save names, addresses or account numbers.",
     advice: "Estimates to help you decide, not financial advice. Check prices and subsidies with your discom and on pmsuryaghar.gov.in.",
-    built: "AI reads your documents (Amazon Nova on Amazon Bedrock). Plain, tested code does every calculation.",
+    built: "AI on Amazon Bedrock reads your documents, and a second AI checks the reading. Plain, tested code does every calculation.",
   },
   terms: {
     sanctioned_load: {
@@ -49,7 +49,7 @@ export const en = {
     },
     kw_kwh: {
       title: "kW and units (kWh)",
-      body: "kW is the size of a solar system, like the size of a water tank. A unit (kWh) is the energy it makes, like the water that flows. In Delhi, 1 kW of panels makes about 1,350–1,400 units a year.",
+      body: "kW is the size of a solar system, like the size of a water tank. A unit (kWh) is the energy it makes, like the water that flows. For Delhi we estimate 1 kW of panels makes about 1,370 units a year (NASA sunlight data, after typical losses).",
     },
     net_metering: {
       title: "Net metering",
@@ -97,7 +97,7 @@ export const en = {
     tooBig: "This file is larger than 10 MB. Use a photo instead of a scan, or a smaller PDF.",
     unsupported: "We can’t open this file. Use a JPG, PNG or PDF.",
     failed: "The upload didn’t finish. Check your connection and try again.",
-    privacy: "We delete the photo within 24 hours and never store your name, address or account number.",
+    privacy: "The photo is deleted automatically after about a day. We never save your name, address or account number.",
     manual: "No bill handy? Type your units instead",
     billReads: "What we read from your bill",
     billReadsList: [
@@ -123,10 +123,10 @@ export const en = {
     billTitle: "Reading your bill",
     quoteTitle: "Reading the quote",
     stageUploaded: "Uploaded",
-    stageReadingBill: "Reading your bill",
+    stageReadingBill: "Reading and double-checking your bill",
     stageReadingQuote: "Reading and checking the quote",
     stageReady: (kind: "bill" | "quote"): string => (kind === "bill" ? "Ready for you to check" : "Report ready"),
-    usual: "This usually takes 10 to 40 seconds.",
+    usual: "This usually takes 10 to 30 seconds.",
     elapsed: (s: number) => `${s} seconds so far`,
     slow: "This is taking longer than usual. You can keep waiting or type the numbers yourself.",
     yourDocument: "Your document",
@@ -186,6 +186,9 @@ export const en = {
       history: "Use numbers separated by commas.",
       summary: (n: number) => (n === 1 ? "1 thing needs fixing before we continue." : `${n} things need fixing before we continue.`),
     },
+    secondReader: (value: string) => `A second AI reading saw ${value} here. Check it against your bill.`,
+    none: "nothing",
+    twoReaders: "Read by one AI and checked by a second. Differences are marked below.",
     confirm: "These numbers are right",
     manualConfirm: "Continue",
     different: "Upload a different bill",
@@ -260,7 +263,7 @@ export const en = {
     bill: {
       q: "What will my bill be?",
       value: (now: number, after: number) => `${inr(now)} → ${inr(after)}`,
-      sub: "an average month, now and with solar",
+      sub: "estimated average month across a year, today and with solar",
       now: "Today",
       withSolar: "With solar",
       saves: (n: number) => `You save about ${inr(n)} a month`,
@@ -271,8 +274,12 @@ export const en = {
         `In ${n} of 12 months, your grid use stays under Delhi’s free ${limit} units, so the bill is ₹0 in those months. In winter, with less sun, you pay for the extra units.`,
       whyNormal: (grid: number) => `You pay only for the ${num(grid)} units a month that solar doesn’t cover, at the cheaper lower slabs. The fixed charge stays.`,
       alreadyZero: (limit: number | null) => `Your bill is already ₹0${limit ? ` because you use less than Delhi’s free ${limit} units` : ""}, so solar has nothing left to save.`,
-      averageMonth: "(Your bills don’t cover this month, so it uses your average.)",
-      averageNote: "Months marked * aren’t covered by your bills, so they use your average.",
+      averageMonth: "(Your bills don’t cover this month, so it uses the average of the months they do cover.)",
+      sunTip: (s: number) => `Sunlight here: ${num(s, 2)} kWh/m² a day (NASA long-term average).`,
+      checkLine: (units: number, days: number, printed: number, ours: number, diff: number) =>
+        `Checked against your bill: it charged ${inr(printed)} for ${num(units)} units over ${days} days. Our calculation for the same units gives ${inr(ours)} (${diff > 0 ? "+" : ""}${num(diff, 1)}%). The average above differs because it spreads your use across all 12 months.`,
+      stateDisclaimer: "Your home is outside Delhi, so we haven’t applied Delhi’s free-electricity subsidy. Some states subsidise low electricity use, which could lower your bill further. Check your state’s scheme with your discom.",
+      averageNote: "Months marked * aren’t covered by your bills, so they use the average of the months that are.",
       fromRoof: "From your roof",
       fromGrid: "From the grid",
       savedLabel: "You save a month",
@@ -285,7 +292,7 @@ export const en = {
         `${m}: you use ${num(use)} units, ${num(solar)} from your roof, ${num(grid)} from the grid. Bill with solar: ${bill}.`,
       marginAvg: "Average month. We assume you use the same each month; your real summer bills will be higher.",
       marginExport: "Extra units sent to the grid in sunny months earn nothing in this estimate, so real savings may be a little higher.",
-      tableHead: ["Month", "Use", "From roof", "From grid", "Bill with solar"],
+      tableHead: ["Month", "Sunlight (kWh/m²/day)", "Use", "From roof", "From grid", "Bill with solar"],
     },
     roof: {
       q: "How much can my roof make?",
@@ -558,7 +565,7 @@ export const en = {
     story: [
       {
         title: "This home uses about 361 units a month.",
-        body: "That is the average of seven bills from a BSES Rajdhani home in Delhi, from about 236 units in November to 563 in May. Its bills average about ₹1,470 a month.",
+        body: "That is the average of seven bills from a BSES Rajdhani home in Delhi, from about 236 units in November to 563 in May. Its May bill was ₹3,654; across a whole year we estimate about ₹1,500 a month.",
         meter: "361",
         unit: "units a month",
       },
@@ -588,12 +595,12 @@ export const en = {
     },
     howTitle: "How we work",
     how: [
-      { title: "AI reads", body: "Amazon Nova reads the numbers off your bill or quote. It never calculates anything." },
+      { title: "AI reads", body: "One AI on Amazon Bedrock reads the numbers off your bill or quote, and a second AI checks every value. Neither calculates anything." },
       { title: "You check", body: "You see every number it read, beside your document, and fix anything that’s wrong." },
       { title: "Rules calculate", body: "Plain, tested code applies Delhi’s tariff, NASA sunlight data and the subsidy rules. Every step is shown." },
     ],
     privacyTitle: "Your bill stays private",
-    privacy: "The photo is deleted within 24 hours. We keep only the numbers for 30 days, never your name, address or account number.",
+    privacy: "The photo is deleted automatically after about a day. We keep only the numbers for 30 days, never your name, address or account number.",
   },
   how: {
     title: "How rooftop solar works in India",
@@ -610,15 +617,15 @@ export const en = {
     varies: "Varies by discom",
     methodTitle: "How SolarSaathi calculates",
     method: [
-      "The AI (Amazon Nova on Amazon Bedrock) only reads numbers from your documents. You check them before anything is calculated.",
-      "Your average monthly use comes from every bill period we can read, each scaled to 30 days.",
+      "An AI on Amazon Bedrock (Kimi K2.5) reads the numbers from your documents and a second one (Qwen3-VL) checks them. Where they disagree, the bill’s own printed numbers decide, or you are asked. You confirm everything before anything is calculated.",
+      "Your use comes from every bill period we can read. Months your bills cover use your real use for that month; other months use the average of the covered months.",
       "Sunlight comes from NASA POWER’s long-term averages for your location, month by month.",
       "We size the system to cover about 90% of your use, within your sanctioned load and roof space.",
       "Your bill is worked out month by month with your discom’s slab tariff, fixed charges, PPAC, surcharges, taxes and Delhi’s subsidy.",
       "Payback comes from a 25-year cash flow that includes maintenance, one inverter replacement and panel ageing.",
     ],
     dataTitle: "What we store",
-    data: "Bill and quote photos are deleted within 24 hours. The confirmed numbers and your location, rounded to about 1 km, are kept for 30 days so the report link works. We never store names, addresses or account numbers.",
+    data: "Bill and quote photos are deleted automatically after about a day. The confirmed numbers and your location, rounded to about 1 km, are kept for 30 days so the report link works. We never save names, addresses or account numbers.",
   },
   notFound: {
     title: "This page doesn’t exist",
