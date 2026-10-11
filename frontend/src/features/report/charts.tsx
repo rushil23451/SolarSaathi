@@ -6,7 +6,7 @@ import { useLang } from "../../i18n";
 import { inr, num, inrShort } from "../../lib/format";
 import type { Analysis, MonthRow, Scenario, YearPoint } from "../../types/api";
 
-const MONTHS = {
+export const MONTHS = {
   en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
   hi: ["जन", "फ़र", "मार्च", "अप्रै", "मई", "जून", "जुल", "अग", "सित", "अक्टू", "नव", "दिस"],
 };

@@ -10,7 +10,8 @@ import type { Analysis } from "../types/api";
 import { Button, ButtonLink } from "../ui/controls";
 import { Meter } from "../ui/Meter";
 import { Term } from "../ui/terms";
-import { CostWaterfall, HBars, MonthStrip, PaybackChart, RoofDiagram } from "../features/report/charts";
+import { CostWaterfall, HBars, MonthStrip, PaybackChart } from "../features/report/charts";
+import { Roof3D } from "../features/Roof3D";
 import { useTitle } from "../lib/useTitle";
 
 const SECTIONS = ["worth", "bill", "roof", "cost", "payback", "loan", "air", "method"] as const;
@@ -175,7 +176,7 @@ function ReportBody({ r, id, owner }: { r: Analysis; id: string; owner: boolean 
                   : R.roof.limitedBy.roof(r.size!.roof_limit_kw!)}
               </p>
               <div className="flex flex-col gap-6">
-                <RoofDiagram panels={r.size!.panels} caption={R.roof.diagramCaption(r.size!.panels, r.size!.panel_watt)} />
+                                <Roof3D r={r} />
                 <Rows rows={[
                   [R.roof.rows.use, t.common.unitsMonth(r.monthly_units!)],
                   [R.roof.rows.perKw, R.roof.rows.perKwValue(r.size!.yield_per_kw_year)],

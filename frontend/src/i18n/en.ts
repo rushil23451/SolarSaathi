@@ -623,6 +623,44 @@ export const en = {
     text: "The link may be incomplete. Start from the home page.",
     home: "Go to the home page",
   },
+    roof3d: {
+    hint: "Drag to turn · tap a panel",
+    turn: "Drag to turn",
+    south: "South side",
+    sizes: { small: "small", medium: "medium", large: "large" },
+    preview: (size: string, panels: number, k: number) =>
+      `A ${size} roof fits about ${panels} panels (≈ ${kw(k)}). Roughly 100 sq ft per kW, with gaps so rows don’t shade each other.`,
+    summary: (panels: number, k: number, used: number, roof: number | null, free: number) =>
+      `${panels} panels × 545 W = ${kw(k)}, on about ${num(used)} sq ft of shadow-free roof` +
+      (roof ? ` out of about ${num(roof)} sq ft${free > 0 ? `, with room for ${free} more` : ""}.` : "."),
+    tapHint: "Tap a panel to see what it makes.",
+    panel: (i: number, n: number) => `Panel ${i} of ${n}`,
+    power: "Peak power",
+    perMonth: "Makes a month (average)",
+    range: "Best and lowest month",
+    perYear: "Makes a year",
+    saves: "Its share of your saving",
+    life: "Its share over 25 years",
+    co2: "CO₂ it avoids",
+    units: (n: number) => `${num(n)} units`,
+    perYearInr: (s: string) => `${s} a year`,
+    kgYear: (n: number) => `${num(n)} kg a year`,
+    note: "Each panel’s share of the whole system. Real output depends on shade, dust and tilt.",
+    ghost: (units: number) => `Free space for one more panel: +545 W, about +${num(units)} units a month.`,
+    free: "Free space for one more panel",
+    chipAvg: "a month on average",
+    chipMonth: (m: string) => `in ${m}`,
+    chipPanels: (n: number) => `${n} panels`,
+    monthLine: (m: string, per: number, total: number, p: number) =>
+      `${m}: each panel makes about ${num(per)} units; all ${p} together about ${num(total)}.`,
+    play: "Play the year",
+    pause: "Pause",
+    yearLabel: "Pick a month",
+    tipAvg: "units a month",
+    tipMonth: (m: string) => `units in ${m}`,
+    tipSave: "saved a year",
+    tipCo2: "kg CO₂ avoided a year",
+  },
 };
 
 export type Dict = typeof en;

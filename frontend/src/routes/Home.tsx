@@ -9,7 +9,7 @@ import type { Roof } from "../types/api";
 import { Button, Spinner, Steps, inputClass } from "../ui/controls";
 import { useTitle } from "../lib/useTitle";
 
-const ROOF_SQFT: Record<Exclude<Roof, "unknown">, number> = { small: 150, medium: 300, large: 600 };
+import { ROOF_SQFT, Roof3D } from "../features/Roof3D";
 
 export function Home() {
   const { t, lang } = useLang();
@@ -160,6 +160,7 @@ export function Home() {
             </p>
           )}
           {submitted && !roof && !noRoof && <p className="type-small text-bad">{t.home.needRoof}</p>}
+                    {roof && roof !== "unknown" && !noRoof && <Roof3D key={roof} roof={roof} />}
         </section>
       </div>
 
