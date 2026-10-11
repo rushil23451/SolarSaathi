@@ -276,6 +276,20 @@ export const en = {
       alreadyZero: (limit: number | null) => `Your bill is already ₹0${limit ? ` because you use less than Delhi’s free ${limit} units` : ""}, so solar has nothing left to save.`,
       averageMonth: "(Your bills don’t cover this month, so it uses the average of the months they do cover.)",
       sunTip: (s: number) => `Sunlight here: ${num(s, 2)} kWh/m² a day (NASA long-term average).`,
+      thisSub: (month: string | null) => (month ? `your ${month} bill: as printed, and with solar` : "your bill: as printed, and with solar"),
+      thisTitle: (month: string | null) => (month ? `Your ${month} bill, redone with solar` : "Your bill, redone with solar"),
+      thisBefore: "On your bill",
+      thisBeforeEstimated: "Your bill (calculated)",
+      thisAfter: "With solar",
+      thisSaving: "You’d save",
+      thisExplain: (units: number, days: number, k: number, solar: number, grid: number) =>
+        `That bill was for ${num(units)} units over ${days} days. In the same period ${kw(k)} of panels would make about ${num(solar)} units, leaving ${num(grid)} to take from the grid.`,
+      thisFree: (grid: number, limit: number) => `${num(grid)} units is under Delhi’s free ${limit}, so this bill would be ₹0.`,
+      tariffCheck: (units: number, ours: number, printed: number, diff: number) =>
+        `Why “with solar” is calculated, not scaled: slab rates, the fixed charge and Delhi’s free units don’t shrink in proportion to units, so we recalculate the bill with your discom’s tariff. Applied to this bill’s own ${num(units)} units, that tariff gives ${inr(ours)} against the ${inr(printed)} printed (${diff > 0 ? "+" : ""}${num(diff, 1)}%), so the “with solar” figure is worked out the same way your discom does.`,
+      yearTitle: "Across a whole year",
+      yearValue: (now: number, after: number) =>
+        `An average month: ${inr(now)} today, ${inr(after)} with solar. Your bills vary with the season, so the year matters more than one month.`,
       checkLine: (units: number, days: number, printed: number, ours: number, diff: number) =>
         `Checked against your bill: it charged ${inr(printed)} for ${num(units)} units over ${days} days. Our calculation for the same units gives ${inr(ours)} (${diff > 0 ? "+" : ""}${num(diff, 1)}%). The average above differs because it spreads your use across all 12 months.`,
       stateDisclaimer: "Your home is outside Delhi, so we haven’t applied Delhi’s free-electricity subsidy. Some states subsidise low electricity use, which could lower your bill further. Check your state’s scheme with your discom.",

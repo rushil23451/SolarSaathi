@@ -70,6 +70,36 @@ def bill_check(bill: dict, load_kw: float, category: str, tariff_id: str, state_
             "diff_pct": round((ours_gross - printed) / printed * 100, 1) if printed else None}
 
 
+def this_bill_with_solar(bill: dict, kw: float, ghi: dict, load_kw: float, category: str, tariff_id: str,
+                        state_applies: bool) -> dict | None:
+    """The uploaded bill itself, redone with solar: same units and days, minus what the panels would
+    make in that period. 'Before' is the amount printed on the bill when we have it; 'after' must be
+    calculated with the tariff, because a bill doesn't shrink in proportion to the units (slabs,
+    fixed charges, Delhi's free 200 units)."""
+    from datetime import date, timedelta
+
+    units, days = bill.get("units_billed"), bill.get("billing_period_days") or 30
+    if not units or not kw:
+        return None
+    month = None
+    try:
+        start, end = date.fromisoformat(str(bill.get("period_start"))), date.fromisoformat(str(bill.get("period_end")))
+        month = (start + timedelta(days=(end - start).days // 2)).month  # the month most of the period falls in
+    except ValueError:
+        pass
+    sun = (ghi.get("monthly") or [ghi["ghi"]] * 12)[month - 1] if month else ghi["ghi"]
+    solar = kw * sun * days * config.solar()["performance_ratio"]
+    grid = max(0.0, units - solar)
+    per = lambda u: tariff.monthly_bill(u * 30 / days, load_kw, category, tariff_id, apply_state_subsidy=state_applies)
+    ours_now = per(units)["payable"] * days / 30
+    with_solar = per(grid)["payable"] * days / 30
+    printed = bill.get("current_charges_inr")
+    before = printed if printed else ours_now
+    return {"month": month, "units": round(units), "days": days, "solar": round(solar), "grid": round(grid),
+            "printed": round(printed) if printed else None, "ours_now": round(ours_now),
+            "with_solar": round(with_solar), "saving": round(max(0.0, before - with_solar))}
+
+
 def analyse(bill: dict, ghi: dict, roof: str = "unknown", lat: float | None = None, lon: float | None = None) -> dict:
     s = config.solar()
     tariff_id = config.find_tariff_id(bill.get("discom"))
@@ -233,6 +263,7 @@ def analyse(bill: dict, ghi: dict, roof: str = "unknown", lat: float | None = No
         "payback_years": payback,
         "lifetime_savings": flow["net_25"],
         "lifetime": flow,
+        "this_bill": this_bill_with_solar(bill, kw, ghi, load_kw, category, tariff_id, state_applies),
         "scenarios": scenarios,
         "months": [{k: m[k] for k in ("month", "sun", "use", "solar", "grid", "now", "with_solar", "from_bills")} for m in months],
         "loan": {"amount": round(net_cost), "rate_pct": loan["rate_pct"], "years": loan["years"],

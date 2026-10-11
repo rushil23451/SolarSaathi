@@ -132,3 +132,12 @@ def test_uncovered_months_use_the_average_of_covered_months(bills):
     rates = calc.seasonal_use(bills["brpl_domestic_may25"], 361)
     covered = [r for r, from_bills in rates if from_bills]
     assert all(abs(r - sum(covered) / len(covered)) < 1e-9 for r, from_bills in rates if not from_bills)
+
+
+def test_the_uploaded_bill_redone_with_solar(bills):
+    r = calc.analyse(bills["brpl_domestic_may25"], DELHI_GHI, "unknown", 28.61, 77.21)
+    tb = r["this_bill"]
+    assert tb["month"] == 5 and tb["printed"] == 3654  # the May 2025 bill as printed
+    assert tb["grid"] == round(563 - tb["solar"])      # what the panels don't cover in May
+    assert tb["grid"] <= 200 and tb["with_solar"] == 0  # under Delhi's free 200 units
+    assert tb["saving"] == 3654                         # printed bill minus the bill with solar

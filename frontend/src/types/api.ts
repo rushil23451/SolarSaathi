@@ -120,6 +120,8 @@ export interface Analysis {
   ghi?: number;
   ghi_source?: string;
   bill_now?: BillBreakdown;
+  this_bill?: { month: number | null; units: number; days: number; solar: number; grid: number; printed: number | null;
+    ours_now: number; with_solar: number; saving: number } | null;
   bill_check?: { units: number; days: number; ours_gross: number; ours_payable: number; printed: number | null; diff_pct: number | null } | null;
   flags?: Flag[];
   working?: { key: string; value: string; note: string }[];

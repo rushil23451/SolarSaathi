@@ -10,7 +10,7 @@ import type { Analysis } from "../types/api";
 import { Button, ButtonLink } from "../ui/controls";
 import { Meter } from "../ui/Meter";
 import { Term } from "../ui/terms";
-import { CostWaterfall, HBars, MonthStrip, PaybackChart } from "../features/report/charts";
+import { CostWaterfall, HBars, MONTHS, MonthStrip, PaybackChart } from "../features/report/charts";
 import { Roof3D } from "../features/Roof3D";
 import { useTitle } from "../lib/useTitle";
 
@@ -50,7 +50,7 @@ export function Report() {
 }
 
 function ReportBody({ r, id, owner }: { r: Analysis; id: string; owner: boolean }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const R = t.report;
   const full = Boolean(r.system_kw && r.months && r.lifetime);
   const sections = full ? SECTIONS : (["worth", "bill"] as const);
@@ -134,10 +134,16 @@ function ReportBody({ r, id, owner }: { r: Analysis; id: string; owner: boolean 
 
         {/* 2. bill */}
         {r.bill_now && (
-          <Section id="bill" q={R.bill.q} value={r.bill_with_solar ? R.bill.value(r.bill_now.payable, r.bill_with_solar.payable) : inr(r.bill_now.payable)} sub={R.bill.sub}
+          <Section id="bill" q={R.bill.q}
+            value={r.this_bill ? R.bill.value(r.this_bill.printed ?? r.this_bill.ours_now, r.this_bill.with_solar)
+              : r.bill_with_solar ? R.bill.value(r.bill_now.payable, r.bill_with_solar.payable) : inr(r.bill_now.payable)}
+            sub={r.this_bill ? R.bill.thisSub(r.this_bill.month ? MONTHS[lang][r.this_bill.month - 1] : null) : R.bill.sub}
             margin={full ? [R.bill.marginAvg, R.bill.marginExport] : []}>
             {r.bill_with_solar ? (
               <>
+                {r.this_bill && <ThisBill r={r} />}
+                <h3 className="type-h3 pt-2">{R.bill.yearTitle}</h3>
+                <p className="-mt-3 text-ink-2">{R.bill.yearValue(r.bill_now.payable, r.bill_with_solar.payable)}</p>
                 <p className="type-prose">
                   {r.bill_now.payable < 1
                     ? R.bill.alreadyZero(r.free_units_limit ?? null)
@@ -148,12 +154,6 @@ function ReportBody({ r, id, owner }: { r: Analysis; id: string; owner: boolean 
                         : R.bill.whyNormal(r.grid_units_month!)}
                 </p>
                 <BillSlips r={r} />
-                {r.bill_check?.printed && (
-                  <p className="flex items-start gap-2 rounded-[var(--radius-input)] bg-good-soft px-4 py-3 text-ink-2">
-                    <CheckCircle weight="fill" className="mt-1 shrink-0 text-good" aria-hidden="true" />
-                    <span>{R.bill.checkLine(r.bill_check.units, r.bill_check.days, r.bill_check.printed, r.bill_check.ours_gross, r.bill_check.diff_pct ?? 0)}</span>
-                  </p>
-                )}
                 {r.flags?.includes("check_state_subsidy") && (
                   <p className="flex items-start gap-2 rounded-[var(--radius-input)] bg-warn-soft px-4 py-3 text-warn">
                     <Info className="mt-1 shrink-0" aria-hidden="true" /> <span>{R.bill.stateDisclaimer}</span>
@@ -346,6 +346,35 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="border-t border-line pt-2">
       <dt className="type-small text-muted">{label}</dt>
       <dd className="text-[20px] font-[680] leading-7">{value}</dd>
+    </div>
+  );
+}
+
+/** The bill the person uploaded, redone with solar: the printed amount is "before". */
+function ThisBill({ r }: { r: Analysis }) {
+  const { t, lang } = useLang();
+  const b = t.report.bill;
+  const tb = r.this_bill!;
+  const before = tb.printed ?? tb.ours_now;
+  const month = tb.month ? MONTHS[lang][tb.month - 1] : null;
+  return (
+    <div className="flex flex-col gap-4 rounded-[var(--radius-panel)] border border-line bg-surface p-6">
+      <h3 className="type-h3">{b.thisTitle(month)}</h3>
+      <dl className="grid grid-cols-3 gap-4 nums">
+        <div><dt className="type-small text-muted">{tb.printed ? b.thisBefore : b.thisBeforeEstimated}</dt><dd className="text-[30px] font-[700] leading-9">{inr(before)}</dd></div>
+        <div><dt className="type-small text-muted">{b.thisAfter}</dt><dd className="text-[30px] font-[700] leading-9">{inr(tb.with_solar)}</dd></div>
+        <div className="rounded-[var(--radius-input)] bg-marigold-soft px-3 py-1"><dt className="type-small text-marigold-text">{b.thisSaving}</dt><dd className="text-[30px] font-[700] leading-9 text-marigold-text">{inr(tb.saving)}</dd></div>
+      </dl>
+      <p className="text-ink-2">
+        {b.thisExplain(tb.units, tb.days, r.system_kw!, tb.solar, tb.grid)}{" "}
+        {tb.with_solar === 0 && r.free_units_limit && tb.grid <= r.free_units_limit ? b.thisFree(tb.grid, r.free_units_limit) : ""}
+      </p>
+      {tb.printed && r.bill_check && (
+        <p className="flex items-start gap-2 border-t border-line pt-3 type-small text-muted">
+          <CheckCircle weight="fill" className="mt-0.5 shrink-0 text-good" aria-hidden="true" />
+          <span>{b.tariffCheck(tb.units, r.bill_check.ours_gross, tb.printed, r.bill_check.diff_pct ?? 0)}</span>
+        </p>
+      )}
     </div>
   );
 }
