@@ -151,13 +151,13 @@ function PriceScale({ check, gstExcluded }: { check: Check; gstExcluded: boolean
           <span className="block size-6 rounded-full border-4 border-surface bg-ink shadow-[var(--shadow-panel)]" />
         </div>
       </div>
-      <div className="relative h-14 type-small nums">
+      <div className="relative h-6 type-small nums">
         <span className="absolute -translate-x-1/2 text-muted" style={{ left: `${pos(lo)}%` }}>{inr(lo)}</span>
         <span className="absolute -translate-x-1/2 text-muted" style={{ left: `${pos(hi)}%` }}>{inr(hi)}</span>
-        <span className="absolute top-6 -translate-x-1/2 whitespace-nowrap font-semibold" style={{ left: `${Math.min(88, Math.max(12, pos(p)))}%` }}>
-          {Q.priceYours}: {inr(p)} / kW, {verdict.toLowerCase()}
-        </span>
-      </div>
+        </div>
+        <p className="nums font-semibold">
+        {Q.priceYours}: {inr(p)} / kW, {verdict.toLowerCase()}
+        </p>
       {gstExcluded && <p className="flex items-center gap-2 type-small text-muted"><Info aria-hidden="true" /> {Q.gstNote}</p>}
     </section>
   );
