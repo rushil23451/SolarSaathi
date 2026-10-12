@@ -87,7 +87,7 @@ def bill_analyse(body: dict) -> dict:
         return _resp(400, {"error": "location must be in India"})
     roof = body.get("roof") if body.get("roof") in ROOF_SIZES else "unknown"
     try:
-        result = calc.analyse(bill, irradiance.annual_ghi(lat, lon), roof)
+        result = calc.analyse(bill, irradiance.annual_ghi(lat, lon), roof, lat, lon)
     except ValueError as e:
         return _resp(400, {"error": str(e)})
     # Only the confirmed numbers are stored: no image, no name, location rounded to ~1 km.

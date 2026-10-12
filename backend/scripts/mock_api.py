@@ -82,7 +82,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(202, {"jobId": job_id})
         if self.path == "/bill/analyse":
             ghi = {"ghi": 4.89, "monthly": [3.09, 4.35, 5.65, 6.58, 6.71, 6.09, 5.01, 4.89, 5.06, 4.66, 3.58, 3.03], "source": "NASA POWER (saved value for New Delhi; mock API)"}
-            result = calc.analyse(body["bill"], ghi, body.get("roof", "unknown"))
+            result = calc.analyse(body["bill"], ghi, body.get("roof", "unknown"), body.get("lat"), body.get("lon"))
             analysis_id = uuid.uuid4().hex[:16]
             analyses[analysis_id] = result
             return self._send(200, {"analysisId": analysis_id, "result": result})

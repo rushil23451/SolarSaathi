@@ -12,7 +12,12 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 
 AWS_REGION = os.environ.get("AWS_REGION", "ap-south-1")
-MODEL_ID = os.environ.get("MODEL_ID", "global.amazon.nova-2-lite-v1:0")
+# Kimi K2.5 read all four sample bills perfectly in 3 of 3 runs (20/20 fields); Qwen3-VL 19/20,
+# Nova 2 Lite 18/20 (backend/scripts/eval_bills.py). Nova 2 Lite stays as the fallback.
+MODEL_ID = os.environ.get("MODEL_ID", "moonshotai.kimi-k2.5")
+FALLBACK_MODEL_ID = os.environ.get("FALLBACK_MODEL_ID", "global.amazon.nova-2-lite-v1:0")
+# A second model re-reads the bill with the first model's JSON and checks every value (empty = off).
+VERIFY_MODEL_ID = os.environ.get("VERIFY_MODEL_ID", "qwen.qwen3-vl-235b-a22b")
 LLM_EFFORT = os.environ.get("LLM_EFFORT", "low")  # Claude only
 
 

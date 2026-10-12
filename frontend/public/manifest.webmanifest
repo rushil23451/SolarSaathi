@@ -1,8 +1,0 @@
-{
-  "name": "SolarSaathi",
-  "short_name": "SolarSaathi",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#fffaf0",
-  "theme_color": "#f5a524"
-}

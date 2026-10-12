@@ -7,6 +7,11 @@
   "lifetime_years": 25,
   "tariff_growth_pct_per_year": 3.0,
   "tariff_growth_note": "Assumption: electricity prices rise about 3% a year. Set to 0 for flat prices.",
+  "tariff_growth_scenarios_pct": [
+    0,
+    3,
+    5
+  ],
   "maintenance_inr_per_kw_year": 500,
   "inverter_replacement": {
     "year": 12,

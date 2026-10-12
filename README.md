@@ -10,7 +10,7 @@ payment terms, then gives the family the exact questions to ask the vendor.
 
 Track 03, Waste and Energy (rooftop solar). Built on AWS with two AWS open-source tools
 (**Strands Agents SDK**, **AWS SAM CLI**) and deployed on AWS (Lambda, API Gateway, S3,
-DynamoDB, Bedrock with **Amazon Nova**, Polly, Amplify). Claude on Bedrock is a one-setting
+DynamoDB, Bedrock with **Kimi K2.5** and **Amazon Nova** as fallback, Polly, Amplify). Claude on Bedrock is a one-setting
 switch for Paid-plan accounts.
 
 > **Design rule:** the AI only *reads* documents. Every number comes from plain, unit-tested
@@ -29,7 +29,7 @@ Phone (React PWA on Amplify)
   ▼
 API Gateway (HTTP API) ─► ApiFunction (Lambda, fast routes)
                           └─► WorkerFunction (Lambda, async)
-                                ├─ Amazon Nova on Bedrock (or Claude): reads the bill / quote into JSON
+                                ├─ Kimi K2.5 on Bedrock (Nova 2 Lite fallback): reads the bill + a zoomed crop into JSON
                                 └─ Strands agent: runs the 9 quote rules, writes vendor questions
 DynamoDB: Jobs · Analyses (30-day TTL) · IrradianceCache      Polly: Hindi/English voice
 ```

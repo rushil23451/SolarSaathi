@@ -5,10 +5,19 @@ Description: SolarSaathi - rooftop solar bill and quote checker (Track 03, Waste
 Parameters:
   ModelId:
     Type: String
-    Default: global.amazon.nova-2-lite-v1:0
+    Default: moonshotai.kimi-k2.5
     Description: >-
-      Bedrock model that reads bills and quotes. Amazon Nova IDs (works on Free plan accounts) use the
-      Converse API; anthropic.* IDs use Claude in Amazon Bedrock and need a Paid plan account.
+      Bedrock vision model that reads bills and quotes (Converse API). Kimi K2.5 scored best on our bill
+      tests; qwen.qwen3-vl-235b-a22b and global.amazon.nova-2-lite-v1:0 also work. anthropic.* IDs use
+      Claude in Amazon Bedrock and need a Paid plan account.
+  VerifyModelId:
+    Type: String
+    Default: qwen.qwen3-vl-235b-a22b
+    Description: Second model that checks the first reading of each bill against the same images. Empty to turn off.
+  FallbackModelId:
+    Type: String
+    Default: global.amazon.nova-2-lite-v1:0
+    Description: Tried once if the main model is throttled or unavailable. Empty to disable.
   LlmEffort:
     Type: String
     Default: low
@@ -34,6 +43,8 @@ Globals:
     Environment:
       Variables:
         MODEL_ID: !Ref ModelId
+        FALLBACK_MODEL_ID: !Ref FallbackModelId
+        VERIFY_MODEL_ID: !Ref VerifyModelId
         LLM_EFFORT: !Ref LlmEffort
         JOBS_TABLE: !Ref JobsTable
         ANALYSES_TABLE: !Ref AnalysesTable
